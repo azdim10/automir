@@ -18,7 +18,10 @@ import {
   upsertAdminSiteSetting,
 } from '@entities/admin'
 import { signInWithEmail, signOut, useAuthSession } from '@entities/auth'
+import { categoryQueryKeys } from '@entities/category'
 import { useSiteSettings } from '@entities/content'
+import { contentQueryKeys } from '@entities/content'
+import { productQueryKeys } from '@entities/product'
 import type { Json, TableRow } from '@shared/api/supabase'
 import { formatCurrency } from '@shared/lib/format'
 import { getJsonString, isJsonRecord } from '@shared/lib/json'
@@ -252,6 +255,10 @@ function createSettingsForm(
   }
 }
 
+function getMutationErrorMessage(error: Error | null): string | null {
+  return error?.message ?? null
+}
+
 export function AdminPage() {
   const queryClient = useQueryClient()
   const { isAuthenticated, isLoading } = useAuthSession()
@@ -339,6 +346,9 @@ export function AdminPage() {
       void queryClient.invalidateQueries({
         queryKey: adminQueryKeys.products(),
       })
+      void queryClient.invalidateQueries({
+        queryKey: productQueryKeys.all,
+      })
     },
   })
   const deleteProductMutation = useMutation({
@@ -346,6 +356,9 @@ export function AdminPage() {
     onSuccess: () => {
       void queryClient.invalidateQueries({
         queryKey: adminQueryKeys.products(),
+      })
+      void queryClient.invalidateQueries({
+        queryKey: productQueryKeys.all,
       })
     },
   })
@@ -368,6 +381,12 @@ export function AdminPage() {
       void queryClient.invalidateQueries({
         queryKey: adminQueryKeys.categories(),
       })
+      void queryClient.invalidateQueries({
+        queryKey: categoryQueryKeys.all,
+      })
+      void queryClient.invalidateQueries({
+        queryKey: productQueryKeys.all,
+      })
     },
   })
   const deleteCategoryMutation = useMutation({
@@ -375,6 +394,12 @@ export function AdminPage() {
     onSuccess: () => {
       void queryClient.invalidateQueries({
         queryKey: adminQueryKeys.categories(),
+      })
+      void queryClient.invalidateQueries({
+        queryKey: categoryQueryKeys.all,
+      })
+      void queryClient.invalidateQueries({
+        queryKey: productQueryKeys.all,
       })
     },
   })
@@ -422,6 +447,9 @@ export function AdminPage() {
         logoFile: null,
       }))
       void queryClient.invalidateQueries()
+      void queryClient.invalidateQueries({
+        queryKey: contentQueryKeys.all,
+      })
     },
   })
 
@@ -514,6 +542,7 @@ export function AdminPage() {
           {activeTab === 'products' ? (
             <ProductsAdmin
               categories={categories}
+              errorMessage={getMutationErrorMessage(saveProductMutation.error)}
               form={productForm}
               labels={labels}
               products={products}
@@ -530,6 +559,7 @@ export function AdminPage() {
           {activeTab === 'categories' ? (
             <CategoriesAdmin
               categories={categories}
+              errorMessage={getMutationErrorMessage(saveCategoryMutation.error)}
               form={categoryForm}
               labels={labels}
               setForm={setCategoryForm}
@@ -555,6 +585,7 @@ export function AdminPage() {
           ) : null}
           {activeTab === 'settings' ? (
             <SettingsAdmin
+              errorMessage={getMutationErrorMessage(saveSettingsMutation.error)}
               form={settingsForm}
               labels={labels}
               setForm={setSettingsForm}
@@ -572,6 +603,7 @@ export function AdminPage() {
 
 interface ProductsAdminProps {
   categories: TableRow<'categories'>[]
+  errorMessage: string | null
   form: ProductFormState
   labels: AdminLabels
   products: TableRow<'products'>[]
@@ -582,6 +614,7 @@ interface ProductsAdminProps {
 
 function ProductsAdmin({
   categories,
+  errorMessage,
   form,
   labels,
   products,
@@ -692,6 +725,11 @@ function ProductsAdmin({
               }}
             />
             <Button type="submit">{labels.save}</Button>
+            {errorMessage ? (
+              <Typography className="text-red-600" variant="body-sm">
+                {errorMessage}
+              </Typography>
+            ) : null}
           </form>
         </CardContent>
       </Card>
@@ -748,6 +786,7 @@ function ProductsAdmin({
 
 interface CategoriesAdminProps {
   categories: TableRow<'categories'>[]
+  errorMessage: string | null
   form: CategoryFormState
   labels: AdminLabels
   setForm: (form: CategoryFormState) => void
@@ -757,6 +796,7 @@ interface CategoriesAdminProps {
 
 function CategoriesAdmin({
   categories,
+  errorMessage,
   form,
   labels,
   setForm,
@@ -798,6 +838,11 @@ function CategoriesAdmin({
               }}
             />
             <Button type="submit">{labels.save}</Button>
+            {errorMessage ? (
+              <Typography className="text-red-600" variant="body-sm">
+                {errorMessage}
+              </Typography>
+            ) : null}
           </form>
         </CardContent>
       </Card>
@@ -845,6 +890,7 @@ function CategoriesAdmin({
 }
 
 interface SettingsAdminProps {
+  errorMessage: string | null
   form: SiteSettingsFormState
   labels: AdminLabels
   setForm: (form: SiteSettingsFormState) => void
@@ -852,6 +898,7 @@ interface SettingsAdminProps {
 }
 
 function SettingsAdmin({
+  errorMessage,
   form,
   labels,
   setForm,
@@ -983,6 +1030,11 @@ function SettingsAdmin({
             />
           </div>
           <Button type="submit">{labels.save}</Button>
+          {errorMessage ? (
+            <Typography className="text-red-600" variant="body-sm">
+              {errorMessage}
+            </Typography>
+          ) : null}
         </form>
       </CardContent>
     </Card>
