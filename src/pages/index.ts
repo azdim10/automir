@@ -1,0 +1,7 @@
+export { AdminPage } from './admin'
+export { CartPage } from './cart'
+export { CatalogPage } from './catalog'
+export { CheckoutPage } from './checkout'
+export { ContentPage } from './content-page'
+export { HomePage } from './home'
+export { ProductDetailsPage } from './product-details'

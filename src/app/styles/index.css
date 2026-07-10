@@ -1,0 +1,16 @@
+@import 'tailwindcss';
+
+@layer base {
+  html {
+    min-height: 100%;
+  }
+
+  body {
+    min-height: 100%;
+    margin: 0;
+  }
+
+  #root {
+    min-height: 100vh;
+  }
+}
