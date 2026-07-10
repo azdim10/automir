@@ -1,5 +1,5 @@
 import { usePageContent } from '@entities/content'
-import { Container, Skeleton, Typography } from '@shared/ui'
+import { Container, EmptyState, Skeleton, Typography } from '@shared/ui'
 import { HomeSections } from '@widgets/home-sections'
 
 function HomePageSkeleton() {
@@ -32,8 +32,34 @@ function HomePageSkeleton() {
 export function HomePage() {
   const { data, isError, isLoading } = usePageContent('home')
 
-  if (isLoading || isError || !data || data.sections.length === 0) {
+  if (isLoading) {
     return <HomePageSkeleton />
+  }
+
+  if (isError || !data) {
+    return (
+      <main className="py-12">
+        <Container>
+          <EmptyState
+            description="Проверьте подключение к Supabase и наличие страницы home"
+            title="Не удалось загрузить главную"
+          />
+        </Container>
+      </main>
+    )
+  }
+
+  if (data.sections.length === 0) {
+    return (
+      <main className="py-12">
+        <Container>
+          <EmptyState
+            description="Добавьте секции в таблицу page_sections для slug = home"
+            title="Главная страница пуста"
+          />
+        </Container>
+      </main>
+    )
   }
 
   return (
