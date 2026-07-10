@@ -412,19 +412,12 @@ export function AdminPage() {
   })
   const saveSettingsMutation = useMutation({
     mutationFn: async (form: SiteSettingsFormState) => {
-      const logoUrl = form.logoFile
-        ? await uploadAdminSiteLogo({
-            alt: form.logoAlt || form.storeName,
-            file: form.logoFile,
-          })
-        : form.logoUrl
-
       await Promise.all([
         upsertAdminSiteSetting('site_profile', {
           address: form.address,
           email: form.email,
           logoAlt: form.logoAlt,
-          logoUrl,
+          logoUrl: form.logoUrl,
           phone: form.phone,
           storeName: form.storeName,
         }),
@@ -440,6 +433,24 @@ export function AdminPage() {
           title: form.seoTitle,
         }),
       ])
+
+      if (!form.logoFile) {
+        return
+      }
+
+      const logoUrl = await uploadAdminSiteLogo({
+        alt: form.logoAlt || form.storeName,
+        file: form.logoFile,
+      })
+
+      await upsertAdminSiteSetting('site_profile', {
+        address: form.address,
+        email: form.email,
+        logoAlt: form.logoAlt,
+        logoUrl,
+        phone: form.phone,
+        storeName: form.storeName,
+      })
     },
     onSuccess: () => {
       setSettingsForm((current) => ({

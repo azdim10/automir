@@ -8,6 +8,17 @@ import {
 import { normalizeSupabaseError } from '@shared/lib/errors'
 
 const PRODUCT_IMAGE_BUCKET = 'site-images'
+const MAX_IMAGE_SIZE_BYTES = 10 * 1024 * 1024
+const SUPPORTED_IMAGE_TYPES = new Set([
+  'image/avif',
+  'image/gif',
+  'image/jpeg',
+  'image/jpg',
+  'image/png',
+  'image/svg+xml',
+  'image/webp',
+  'image/x-icon',
+])
 
 interface UploadedAdminImage {
   assetId: string
@@ -16,6 +27,16 @@ interface UploadedAdminImage {
 
 function getSafeFileName(fileName: string): string {
   return fileName.replace(/[^a-zA-Z0-9.-]/g, '-').toLowerCase()
+}
+
+function assertSupportedImage(file: File): void {
+  if (file.size > MAX_IMAGE_SIZE_BYTES) {
+    throw new Error('Image size must be 10 MB or less')
+  }
+
+  if (!SUPPORTED_IMAGE_TYPES.has(file.type)) {
+    throw new Error(`Unsupported image type: ${file.type || 'unknown'}`)
+  }
 }
 
 async function uploadAdminImage({
@@ -27,6 +48,8 @@ async function uploadAdminImage({
   file: File
   folder: string
 }): Promise<UploadedAdminImage> {
+  assertSupportedImage(file)
+
   const assetId = crypto.randomUUID()
   const path = `${folder}/${crypto.randomUUID()}-${getSafeFileName(file.name)}`
   const { error: uploadError } = await supabase.storage
