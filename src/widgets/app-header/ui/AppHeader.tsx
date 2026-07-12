@@ -1,30 +1,47 @@
-import { Link } from 'react-router'
+import { Link, NavLink } from 'react-router'
 
 import { useCart } from '@entities/cart'
-import { useCategories } from '@entities/category'
 import { cn } from '@shared/lib/styles/cn'
 import { Container, Skeleton, Typography } from '@shared/ui'
 import { CartIcon } from '@shared/ui/icon/CartIcon'
+import { PhoneIcon } from '@shared/ui/icon/PhoneIcon'
+
+import {
+  getHeaderNavItems,
+  type HeaderLabels,
+} from '../model/headerNav'
 
 interface AppHeaderProps {
   cartAriaLabel: string
-  catalogLabel: string
+  headerLabels: HeaderLabels
   logoAlt: string | null
   logoUrl: string | null
   phone: string | null
   storeName: string
 }
 
+const navLinkClassName = ({ isActive }: { isActive: boolean }) =>
+  cn(
+    'rounded-md px-3 py-2 text-sm font-medium transition-colors',
+    isActive
+      ? 'bg-slate-900 text-white'
+      : 'text-slate-700 hover:bg-slate-100 hover:text-slate-900',
+  )
+
+const iconButtonClassName =
+  'inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-full border border-slate-200 bg-white text-slate-900 transition-colors hover:border-slate-300 hover:bg-slate-50'
+
 export function AppHeader({
   cartAriaLabel,
-  catalogLabel,
+  headerLabels,
   logoAlt,
   logoUrl,
   phone,
   storeName,
 }: AppHeaderProps) {
-  const { data: categories = [] } = useCategories()
   const { itemsCount } = useCart()
+  const navItems = getHeaderNavItems(headerLabels)
+  const requestCallHref = phone ? `tel:${phone}` : '/contacts'
 
   return (
     <header className="sticky top-0 z-40 border-b border-slate-200 bg-white/95 backdrop-blur">
@@ -64,42 +81,51 @@ export function AppHeader({
 
         <nav className="hidden flex-1 justify-center md:flex">
           <ul className="flex flex-wrap items-center gap-2">
-            <li>
-              <Link
-                className="rounded-md px-3 py-2 text-sm font-medium text-slate-700 transition-colors hover:bg-slate-100 hover:text-slate-900"
-                to="/catalog"
-              >
-                {catalogLabel}
-              </Link>
-            </li>
-            {categories.map((category) => (
-              <li key={category.id}>
-                <Link
-                  className="rounded-md px-3 py-2 text-sm font-medium text-slate-700 transition-colors hover:bg-slate-100 hover:text-slate-900"
-                  to={`/catalog/${category.slug}`}
-                >
-                  {category.name}
-                </Link>
+            {navItems.map((item) => (
+              <li key={item.to}>
+                <NavLink className={navLinkClassName} end={item.to === '/'} to={item.to}>
+                  {item.label}
+                </NavLink>
               </li>
             ))}
           </ul>
         </nav>
 
-        <Link
-          aria-label={cartAriaLabel}
-          className={cn(
-            'relative inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-full border border-slate-200 bg-white text-slate-900 transition-colors hover:border-slate-300 hover:bg-slate-50',
+        <div className="flex shrink-0 items-center gap-2">
+          {phone ? (
+            <a
+              aria-label={headerLabels.requestCall}
+              className={iconButtonClassName}
+              href={requestCallHref}
+              title={headerLabels.requestCall}
+            >
+              <PhoneIcon className="h-5 w-5" />
+            </a>
+          ) : (
+            <Link
+              aria-label={headerLabels.requestCall}
+              className={iconButtonClassName}
+              title={headerLabels.requestCall}
+              to="/contacts"
+            >
+              <PhoneIcon className="h-5 w-5" />
+            </Link>
           )}
-          title={cartAriaLabel}
-          to="/cart"
-        >
-          <CartIcon className="h-5 w-5" />
-          {itemsCount > 0 ? (
-            <span className="absolute -top-1 -right-1 flex h-5 min-w-5 items-center justify-center rounded-full bg-slate-900 px-1 text-[11px] font-semibold text-white">
-              {itemsCount > 99 ? '99+' : itemsCount}
-            </span>
-          ) : null}
-        </Link>
+
+          <Link
+            aria-label={cartAriaLabel}
+            className={cn(iconButtonClassName, 'relative')}
+            title={cartAriaLabel}
+            to="/cart"
+          >
+            <CartIcon className="h-5 w-5" />
+            {itemsCount > 0 ? (
+              <span className="absolute -top-1 -right-1 flex h-5 min-w-5 items-center justify-center rounded-full bg-slate-900 px-1 text-[11px] font-semibold text-white">
+                {itemsCount > 99 ? '99+' : itemsCount}
+              </span>
+            ) : null}
+          </Link>
+        </div>
       </Container>
     </header>
   )
@@ -116,7 +142,10 @@ export function AppHeaderSkeleton() {
             <Skeleton className="h-3 w-24" />
           </div>
         </div>
-        <Skeleton className="h-11 w-11 rounded-full" />
+        <div className="flex gap-2">
+          <Skeleton className="h-11 w-11 rounded-full" />
+          <Skeleton className="h-11 w-11 rounded-full" />
+        </div>
       </Container>
     </header>
   )

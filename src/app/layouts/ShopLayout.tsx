@@ -4,6 +4,7 @@ import { useSiteSettings } from '@entities/content'
 import type { Json } from '@shared/api/supabase'
 import { getJsonString, isJsonRecord } from '@shared/lib/json'
 import { AppHeader, AppHeaderSkeleton } from '@widgets/app-header'
+import type { HeaderLabels } from '@widgets/app-header/model/headerNav'
 
 interface SiteProfile {
   logoAlt: string | null
@@ -39,21 +40,40 @@ function parseCartAriaLabel(value: Json | undefined): string | null {
   return getJsonString(value, 'title')
 }
 
-function parseHeaderLabels(value: Json | undefined): string | null {
+function parseHeaderLabels(value: Json | undefined): HeaderLabels | null {
   if (!isJsonRecord(value)) {
     return null
   }
 
-  return getJsonString(value, 'catalog')
+  const keys: (keyof HeaderLabels)[] = [
+    'home',
+    'catalog',
+    'contacts',
+    'news',
+    'requestCall',
+  ]
+  const labels: Partial<HeaderLabels> = {}
+
+  for (const key of keys) {
+    const label = getJsonString(value, key)
+
+    if (!label) {
+      return null
+    }
+
+    labels[key] = label
+  }
+
+  return labels as HeaderLabels
 }
 
 export function ShopLayout() {
   const { data: siteSettings, isLoading } = useSiteSettings()
   const siteProfile = parseSiteProfile(siteSettings?.site_profile)
   const cartAriaLabel = parseCartAriaLabel(siteSettings?.cart_labels)
-  const catalogLabel = parseHeaderLabels(siteSettings?.header_labels)
+  const headerLabels = parseHeaderLabels(siteSettings?.header_labels)
 
-  if (isLoading || !siteProfile || !cartAriaLabel || !catalogLabel) {
+  if (isLoading || !siteProfile || !cartAriaLabel || !headerLabels) {
     return (
       <>
         <AppHeaderSkeleton />
@@ -66,7 +86,7 @@ export function ShopLayout() {
     <>
       <AppHeader
         cartAriaLabel={cartAriaLabel}
-        catalogLabel={catalogLabel}
+        headerLabels={headerLabels}
         logoAlt={siteProfile.logoAlt}
         logoUrl={siteProfile.logoUrl}
         phone={siteProfile.phone}

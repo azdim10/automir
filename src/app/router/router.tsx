@@ -5,9 +5,12 @@ import {
   AdminPage,
   CartPage,
   CatalogPage,
+  CategoriesPage,
   CheckoutPage,
+  ContactsPage,
   ContentPage,
   HomePage,
+  NewsPage,
   ProductDetailsPage,
 } from '@pages/index'
 
@@ -22,11 +25,19 @@ export const router = createBrowserRouter(
         },
         {
           path: 'catalog',
-          element: <CatalogPage />,
+          element: <CategoriesPage />,
         },
         {
           path: 'catalog/:categorySlug',
           element: <CatalogPage />,
+        },
+        {
+          path: 'contacts',
+          element: <ContactsPage />,
+        },
+        {
+          path: 'news',
+          element: <NewsPage />,
         },
         {
           path: 'product/:productId',
