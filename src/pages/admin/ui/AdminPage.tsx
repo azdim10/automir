@@ -7,9 +7,11 @@ import {
   createAdminProduct,
   deleteAdminCategory,
   deleteAdminProduct,
+  getAdminCallbackRequests,
   getAdminCategories,
   getAdminOrders,
   getAdminProducts,
+  updateAdminCallbackRequestStatus,
   updateAdminCategory,
   updateAdminOrderStatus,
   updateAdminProduct,
@@ -36,13 +38,14 @@ import {
   Typography,
 } from '@shared/ui'
 
-type AdminTab = 'products' | 'categories' | 'orders' | 'settings'
+type AdminTab = 'products' | 'categories' | 'orders' | 'callbacks' | 'settings'
 
 interface AdminLabels {
   active: string
   addCategory: string
   addProduct: string
   adminTitle: string
+  callbacks: string
   category: string
   categories: string
   delete: string
@@ -127,6 +130,7 @@ function parseAdminLabels(value: Json | undefined): AdminLabels | null {
     'addCategory',
     'addProduct',
     'adminTitle',
+    'callbacks',
     'category',
     'categories',
     'delete',
@@ -290,6 +294,11 @@ export function AdminPage() {
     queryFn: getAdminOrders,
     enabled: isAuthenticated,
   })
+  const callbacksQuery = useQuery({
+    queryKey: adminQueryKeys.callbacks(),
+    queryFn: getAdminCallbackRequests,
+    enabled: isAuthenticated,
+  })
 
   const signInMutation = useMutation({
     mutationFn: () => signInWithEmail(email, password),
@@ -403,6 +412,15 @@ export function AdminPage() {
       void queryClient.invalidateQueries({ queryKey: adminQueryKeys.orders() })
     },
   })
+  const updateCallbackMutation = useMutation({
+    mutationFn: ({ id, status }: { id: string; status: string }) =>
+      updateAdminCallbackRequestStatus(id, status),
+    onSuccess: () => {
+      void queryClient.invalidateQueries({
+        queryKey: adminQueryKeys.callbacks(),
+      })
+    },
+  })
   const saveSettingsMutation = useMutation({
     mutationFn: async (form: SiteSettingsFormState) => {
       await Promise.all([
@@ -507,6 +525,7 @@ export function AdminPage() {
   const categories = categoriesQuery.data ?? []
   const products = productsQuery.data ?? []
   const orders = ordersQuery.data ?? []
+  const callbacks = callbacksQuery.data ?? []
 
   return (
     <main className="py-10">
@@ -526,8 +545,15 @@ export function AdminPage() {
             </Button>
           </div>
           <div className="flex flex-wrap gap-2">
-            {(['products', 'categories', 'orders', 'settings'] as const).map(
-              (tab) => (
+            {(
+              [
+                'products',
+                'categories',
+                'orders',
+                'callbacks',
+                'settings',
+              ] as const
+            ).map((tab) => (
                 <Button
                   key={tab}
                   variant={activeTab === tab ? 'primary' : 'outline'}
@@ -583,6 +609,16 @@ export function AdminPage() {
               orders={orders}
               onStatusChange={(id, status) => {
                 updateOrderMutation.mutate({ id, status })
+              }}
+            />
+          ) : null}
+          {activeTab === 'callbacks' ? (
+            <CallbacksAdmin
+              callbacks={callbacks}
+              labels={labels}
+              locale={locale}
+              onStatusChange={(id, status) => {
+                updateCallbackMutation.mutate({ id, status })
               }}
             />
           ) : null}
@@ -1074,6 +1110,57 @@ function OrdersAdmin({
               ]}
               onChange={(event) => {
                 onStatusChange(order.id, event.target.value)
+              }}
+            />
+            <Typography className="sr-only" variant="caption">
+              {labels.status}
+            </Typography>
+          </CardContent>
+        </Card>
+      ))}
+    </div>
+  )
+}
+
+interface CallbacksAdminProps {
+  callbacks: TableRow<'callback_requests'>[]
+  labels: AdminLabels
+  locale: string
+  onStatusChange: (id: string, status: string) => void
+}
+
+function CallbacksAdmin({
+  callbacks,
+  labels,
+  locale,
+  onStatusChange,
+}: CallbacksAdminProps) {
+  return (
+    <div className="grid gap-3">
+      {callbacks.map((callback) => (
+        <Card key={callback.id}>
+          <CardContent className="grid gap-3 md:grid-cols-[minmax(0,1fr)_14rem]">
+            <div>
+              <Typography as="h3" variant="h3" weight="semibold">
+                {callback.customer_name}
+              </Typography>
+              <Typography className="text-slate-500" variant="body-sm">
+                {callback.customer_phone}
+              </Typography>
+              <Typography className="text-slate-500" variant="body-sm">
+                {new Date(callback.created_at).toLocaleString(locale)}
+              </Typography>
+            </div>
+            <Select
+              value={callback.status}
+              options={[
+                { value: 'new', label: 'new' },
+                { value: 'processing', label: 'processing' },
+                { value: 'completed', label: 'completed' },
+                { value: 'cancelled', label: 'cancelled' },
+              ]}
+              onChange={(event) => {
+                onStatusChange(callback.id, event.target.value)
               }}
             />
             <Typography className="sr-only" variant="caption">

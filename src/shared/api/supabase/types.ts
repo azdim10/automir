@@ -185,6 +185,30 @@ export interface Database {
           },
         ]
       }
+      callback_requests: {
+        Row: {
+          id: string
+          status: string
+          customer_name: string
+          customer_phone: string
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          status?: string
+          customer_name: string
+          customer_phone: string
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          status?: string
+          customer_name?: string
+          customer_phone?: string
+          created_at?: string
+        }
+        Relationships: []
+      }
       products: {
         Row: {
           id: string

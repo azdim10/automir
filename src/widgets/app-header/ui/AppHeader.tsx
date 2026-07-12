@@ -1,10 +1,10 @@
 import { Link, NavLink } from 'react-router'
 
 import { useCart } from '@entities/cart'
+import { RequestCallbackButton, type CallbackLabels } from '@features/request-callback'
 import { cn } from '@shared/lib/styles/cn'
 import { Container, Skeleton, Typography } from '@shared/ui'
 import { CartIcon } from '@shared/ui/icon/CartIcon'
-import { PhoneIcon } from '@shared/ui/icon/PhoneIcon'
 
 import {
   getHeaderNavItems,
@@ -12,6 +12,7 @@ import {
 } from '../model/headerNav'
 
 interface AppHeaderProps {
+  callbackLabels: CallbackLabels
   cartAriaLabel: string
   headerLabels: HeaderLabels
   logoAlt: string | null
@@ -32,6 +33,7 @@ const iconButtonClassName =
   'inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-full border border-slate-200 bg-white text-slate-900 transition-colors hover:border-slate-300 hover:bg-slate-50'
 
 export function AppHeader({
+  callbackLabels,
   cartAriaLabel,
   headerLabels,
   logoAlt,
@@ -41,7 +43,6 @@ export function AppHeader({
 }: AppHeaderProps) {
   const { itemsCount } = useCart()
   const navItems = getHeaderNavItems(headerLabels)
-  const requestCallHref = phone ? `tel:${phone}` : '/contacts'
 
   return (
     <header className="sticky top-0 z-40 border-b border-slate-200 bg-white/95 backdrop-blur">
@@ -92,25 +93,7 @@ export function AppHeader({
         </nav>
 
         <div className="flex shrink-0 items-center gap-2">
-          {phone ? (
-            <a
-              aria-label={headerLabels.requestCall}
-              className={iconButtonClassName}
-              href={requestCallHref}
-              title={headerLabels.requestCall}
-            >
-              <PhoneIcon className="h-5 w-5" />
-            </a>
-          ) : (
-            <Link
-              aria-label={headerLabels.requestCall}
-              className={iconButtonClassName}
-              title={headerLabels.requestCall}
-              to="/contacts"
-            >
-              <PhoneIcon className="h-5 w-5" />
-            </Link>
-          )}
+          <RequestCallbackButton labels={callbackLabels} />
 
           <Link
             aria-label={cartAriaLabel}

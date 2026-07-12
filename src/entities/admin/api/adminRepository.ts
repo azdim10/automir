@@ -290,6 +290,35 @@ export async function uploadAdminProductImage({
   }
 }
 
+export async function getAdminCallbackRequests(): Promise<
+  TableRow<'callback_requests'>[]
+> {
+  const { data, error } = await supabase
+    .from('callback_requests')
+    .select('*')
+    .order('created_at', { ascending: false })
+
+  if (error) {
+    throw normalizeSupabaseError(error)
+  }
+
+  return data
+}
+
+export async function updateAdminCallbackRequestStatus(
+  id: string,
+  status: string,
+): Promise<void> {
+  const { error } = await supabase
+    .from('callback_requests')
+    .update({ status })
+    .eq('id', id)
+
+  if (error) {
+    throw normalizeSupabaseError(error)
+  }
+}
+
 export async function getAdminOrders(): Promise<TableRow<'orders'>[]> {
   const { data, error } = await supabase
     .from('orders')

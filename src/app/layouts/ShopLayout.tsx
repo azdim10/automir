@@ -1,6 +1,7 @@
 import { Outlet } from 'react-router'
 
 import { useSiteSettings } from '@entities/content'
+import type { CallbackLabels } from '@features/request-callback'
 import type { Json } from '@shared/api/supabase'
 import { getJsonString, isJsonRecord } from '@shared/lib/json'
 import { AppHeader, AppHeaderSkeleton } from '@widgets/app-header'
@@ -67,13 +68,51 @@ function parseHeaderLabels(value: Json | undefined): HeaderLabels | null {
   return labels as HeaderLabels
 }
 
+function parseCallbackLabels(value: Json | undefined): CallbackLabels | null {
+  if (!isJsonRecord(value)) {
+    return null
+  }
+
+  const keys: (keyof CallbackLabels)[] = [
+    'close',
+    'description',
+    'error',
+    'name',
+    'phone',
+    'requestCall',
+    'submit',
+    'success',
+    'title',
+  ]
+  const labels: Partial<CallbackLabels> = {}
+
+  for (const key of keys) {
+    const label = getJsonString(value, key)
+
+    if (!label) {
+      return null
+    }
+
+    labels[key] = label
+  }
+
+  return labels as CallbackLabels
+}
+
 export function ShopLayout() {
   const { data: siteSettings, isLoading } = useSiteSettings()
   const siteProfile = parseSiteProfile(siteSettings?.site_profile)
   const cartAriaLabel = parseCartAriaLabel(siteSettings?.cart_labels)
   const headerLabels = parseHeaderLabels(siteSettings?.header_labels)
+  const callbackLabels = parseCallbackLabels(siteSettings?.callback_labels)
 
-  if (isLoading || !siteProfile || !cartAriaLabel || !headerLabels) {
+  if (
+    isLoading ||
+    !siteProfile ||
+    !cartAriaLabel ||
+    !headerLabels ||
+    !callbackLabels
+  ) {
     return (
       <>
         <AppHeaderSkeleton />
@@ -85,6 +124,7 @@ export function ShopLayout() {
   return (
     <>
       <AppHeader
+        callbackLabels={callbackLabels}
         cartAriaLabel={cartAriaLabel}
         headerLabels={headerLabels}
         logoAlt={siteProfile.logoAlt}
