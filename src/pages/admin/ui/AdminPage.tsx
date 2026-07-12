@@ -572,7 +572,10 @@ export function AdminPage() {
           {activeTab === 'products' ? (
             <ProductsAdmin
               categories={categories}
-              errorMessage={getMutationErrorMessage(saveProductMutation.error)}
+              errorMessage={
+                getMutationErrorMessage(saveProductMutation.error) ??
+                getMutationErrorMessage(deleteProductMutation.error)
+              }
               form={productForm}
               labels={labels}
               products={products}
@@ -589,7 +592,10 @@ export function AdminPage() {
           {activeTab === 'categories' ? (
             <CategoriesAdmin
               categories={categories}
-              errorMessage={getMutationErrorMessage(saveCategoryMutation.error)}
+              errorMessage={
+                getMutationErrorMessage(saveCategoryMutation.error) ??
+                getMutationErrorMessage(deleteCategoryMutation.error)
+              }
               form={categoryForm}
               labels={labels}
               setForm={setCategoryForm}
@@ -809,6 +815,11 @@ function ProductsAdmin({
             </CardContent>
           </Card>
         ))}
+        {errorMessage ? (
+          <Typography className="text-red-600" variant="body-sm">
+            {errorMessage}
+          </Typography>
+        ) : null}
       </div>
     </div>
   )
@@ -914,6 +925,11 @@ function CategoriesAdmin({
             </CardContent>
           </Card>
         ))}
+        {errorMessage ? (
+          <Typography className="text-red-600" variant="body-sm">
+            {errorMessage}
+          </Typography>
+        ) : null}
       </div>
     </div>
   )

@@ -159,6 +159,19 @@ export async function updateAdminCategory(
 }
 
 export async function deleteAdminCategory(id: string): Promise<void> {
+  const { data: products, error: productsError } = await supabase
+    .from('products')
+    .select('id')
+    .eq('category_id', id)
+
+  if (productsError) {
+    throw normalizeSupabaseError(productsError)
+  }
+
+  for (const product of products) {
+    await deleteAdminProduct(product.id)
+  }
+
   const { error } = await supabase.from('categories').delete().eq('id', id)
 
   if (error) {
@@ -211,6 +224,56 @@ export async function updateAdminProduct(
 }
 
 export async function deleteAdminProduct(id: string): Promise<void> {
+  const { data: orderItemRows, error: orderItemsSelectError } = await supabase
+    .from('order_items')
+    .select('order_id')
+    .eq('product_id', id)
+
+  if (orderItemsSelectError) {
+    throw normalizeSupabaseError(orderItemsSelectError)
+  }
+
+  const affectedOrderIds = [
+    ...new Set(orderItemRows.map((item) => item.order_id)),
+  ]
+
+  if (orderItemRows.length > 0) {
+    const { error: orderItemsDeleteError } = await supabase
+      .from('order_items')
+      .delete()
+      .eq('product_id', id)
+
+    if (orderItemsDeleteError) {
+      throw normalizeSupabaseError(orderItemsDeleteError)
+    }
+
+    for (const orderId of affectedOrderIds) {
+      const { data: remainingItems, error: remainingItemsError } =
+        await supabase
+          .from('order_items')
+          .select('total_price')
+          .eq('order_id', orderId)
+
+      if (remainingItemsError) {
+        throw normalizeSupabaseError(remainingItemsError)
+      }
+
+      const totalAmount = remainingItems.reduce(
+        (total, item) => total + item.total_price,
+        0,
+      )
+
+      const { error: orderUpdateError } = await supabase
+        .from('orders')
+        .update({ total_amount: totalAmount })
+        .eq('id', orderId)
+
+      if (orderUpdateError) {
+        throw normalizeSupabaseError(orderUpdateError)
+      }
+    }
+  }
+
   const { data: imageRows, error: imagesError } = await supabase
     .from('product_images')
     .select('asset_id')
