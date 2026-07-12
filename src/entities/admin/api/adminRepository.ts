@@ -5,6 +5,7 @@ import {
   type TableRow,
   type TableUpdate,
 } from '@shared/api/supabase'
+import { STORE_CURRENCY } from '@shared/config'
 import { normalizeSupabaseError } from '@shared/lib/errors'
 
 const PRODUCT_IMAGE_BUCKET = 'site-images'
@@ -179,10 +180,14 @@ export async function getAdminProducts(): Promise<TableRow<'products'>[]> {
 }
 
 export async function createAdminProduct(
-  input: TableInsert<'products'>,
+  input: Omit<TableInsert<'products'>, 'currency'>,
 ): Promise<string> {
   const id = input.id ?? crypto.randomUUID()
-  const { error } = await supabase.from('products').insert({ ...input, id })
+  const { error } = await supabase.from('products').insert({
+    ...input,
+    id,
+    currency: STORE_CURRENCY,
+  })
 
   if (error) {
     throw normalizeSupabaseError(error)
@@ -193,9 +198,12 @@ export async function createAdminProduct(
 
 export async function updateAdminProduct(
   id: string,
-  input: TableUpdate<'products'>,
+  input: Omit<TableUpdate<'products'>, 'currency'>,
 ): Promise<void> {
-  const { error } = await supabase.from('products').update(input).eq('id', id)
+  const { error } = await supabase
+    .from('products')
+    .update({ ...input, currency: STORE_CURRENCY })
+    .eq('id', id)
 
   if (error) {
     throw normalizeSupabaseError(error)

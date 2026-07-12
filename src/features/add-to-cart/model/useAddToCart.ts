@@ -13,7 +13,6 @@ export function useAddToCart() {
       name: product.name,
       sku: product.sku,
       price: product.price,
-      currency: product.currency,
       imageUrl: image?.url ?? null,
       imageAlt: image?.alt ?? null,
       quantity,

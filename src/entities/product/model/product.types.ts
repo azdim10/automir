@@ -43,7 +43,6 @@ export interface Product {
   description: string | null
   price: number
   oldPrice: number | null
-  currency: string
   sku: string
   stockQuantity: number
   isFeatured: boolean

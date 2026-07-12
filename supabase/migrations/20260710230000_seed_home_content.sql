@@ -7,8 +7,7 @@ select p.id, 'hero', 0, '{
   "title": "Automir",
   "description": "Качественные товары с быстрой доставкой по всей стране",
   "actions": [
-    { "label": "Каталог", "href": "catalog", "variant": "primary" },
-    { "label": "Корзина", "href": "cart", "variant": "outline" }
+    { "label": "Каталог", "href": "catalog", "variant": "primary" }
   ]
 }'::jsonb, true
 from public.pages p

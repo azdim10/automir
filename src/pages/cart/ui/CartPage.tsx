@@ -100,10 +100,9 @@ export function CartPage() {
   const { data: siteSettings } = useSiteSettings()
   const { items, itemsCount, total } = useCart()
   const locale = siteSettings?.locale
-  const currency = siteSettings?.currency
   const labels = parseCartLabels(siteSettings?.cart_labels)
 
-  if (typeof locale !== 'string' || typeof currency !== 'string' || !labels) {
+  if (typeof locale !== 'string' || !labels) {
     return <CartPageSkeleton />
   }
 
@@ -147,11 +146,7 @@ export function CartPage() {
                           <div>
                             <span>{labels.price}: </span>
                             <span className="font-medium text-slate-900">
-                              {formatCurrency(
-                                item.price,
-                                item.currency,
-                                locale,
-                              )}
+                              {formatCurrency(item.price, locale)}
                             </span>
                           </div>
                           <div>
@@ -165,7 +160,6 @@ export function CartPage() {
                             <span className="font-medium text-slate-900">
                               {formatCurrency(
                                 item.price * item.quantity,
-                                item.currency,
                                 locale,
                               )}
                             </span>
@@ -191,7 +185,7 @@ export function CartPage() {
                   </div>
                   <div className="flex justify-between gap-4 text-lg font-semibold">
                     <span>{labels.total}</span>
-                    <span>{formatCurrency(total, currency, locale)}</span>
+                    <span>{formatCurrency(total, locale)}</span>
                   </div>
                   <Button
                     fullWidth

@@ -89,7 +89,6 @@ export function ProductDetailsPage() {
               <ProductPrice
                 price={product.price}
                 oldPrice={product.oldPrice}
-                currency={product.currency}
                 locale={locale}
               />
             </div>

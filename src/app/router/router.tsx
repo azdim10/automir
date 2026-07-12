@@ -1,5 +1,6 @@
-import { createBrowserRouter, Outlet } from 'react-router'
+import { createBrowserRouter } from 'react-router'
 
+import { ShopLayout } from '@app/layouts/ShopLayout'
 import {
   AdminPage,
   CartPage,
@@ -13,8 +14,7 @@ import {
 export const router = createBrowserRouter(
   [
     {
-      path: '/',
-      element: <Outlet />,
+      element: <ShopLayout />,
       children: [
         {
           index: true,
@@ -44,11 +44,11 @@ export const router = createBrowserRouter(
           path: 'page/:slug',
           element: <ContentPage />,
         },
-        {
-          path: 'admin',
-          element: <AdminPage />,
-        },
       ],
+    },
+    {
+      path: 'admin',
+      element: <AdminPage />,
     },
   ],
   {

@@ -37,7 +37,6 @@ export function ProductCard({
         <ProductPrice
           price={product.price}
           oldPrice={product.oldPrice}
-          currency={product.currency}
           locale={locale}
         />
         {action}

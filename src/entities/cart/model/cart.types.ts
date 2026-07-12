@@ -4,7 +4,6 @@ export interface CartItem {
   name: string
   sku: string
   price: number
-  currency: string
   quantity: number
   imageUrl: string | null
   imageAlt: string | null

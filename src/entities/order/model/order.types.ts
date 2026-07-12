@@ -17,7 +17,6 @@ export interface CreateOrderItemInput {
 
 export interface CreateOrderInput {
   customer: OrderCustomer
-  currency: string
   items: CreateOrderItemInput[]
 }
 
@@ -25,5 +24,4 @@ export interface CreatedOrder {
   id: string
   status: OrderStatus
   totalAmount: number
-  currency: string
 }

@@ -63,7 +63,6 @@ export function mapProduct({
     description: row.description,
     price: row.price,
     oldPrice: row.old_price,
-    currency: row.currency,
     sku: row.sku,
     stockQuantity: row.stock_quantity,
     isFeatured: row.is_featured,

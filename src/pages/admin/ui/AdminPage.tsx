@@ -45,7 +45,6 @@ interface AdminLabels {
   adminTitle: string
   category: string
   categories: string
-  currency: string
   delete: string
   email: string
   image: string
@@ -81,7 +80,6 @@ interface AdminLabels {
 
 interface ProductFormState {
   categoryId: string
-  currency: string
   id: string | null
   imageAlt: string
   imageFile: File | null
@@ -131,7 +129,6 @@ function parseAdminLabels(value: Json | undefined): AdminLabels | null {
     'adminTitle',
     'category',
     'categories',
-    'currency',
     'delete',
     'email',
     'image',
@@ -192,10 +189,9 @@ function AdminSkeleton() {
   )
 }
 
-function createEmptyProductForm(currency: string): ProductFormState {
+function createEmptyProductForm(): ProductFormState {
   return {
     categoryId: '',
-    currency,
     id: null,
     imageAlt: '',
     imageFile: null,
@@ -264,15 +260,13 @@ export function AdminPage() {
   const { isAuthenticated, isLoading } = useAuthSession()
   const { data: siteSettings } = useSiteSettings()
   const labels = parseAdminLabels(siteSettings?.admin_labels)
-  const currency =
-    typeof siteSettings?.currency === 'string' ? siteSettings.currency : ''
   const locale =
     typeof siteSettings?.locale === 'string' ? siteSettings.locale : ''
   const [activeTab, setActiveTab] = useState<AdminTab>('products')
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
-  const [productForm, setProductForm] = useState<ProductFormState>(() =>
-    createEmptyProductForm(currency),
+  const [productForm, setProductForm] = useState<ProductFormState>(
+    createEmptyProductForm,
   )
   const [categoryForm, setCategoryForm] = useState<CategoryFormState>(() =>
     createEmptyCategoryForm(),
@@ -307,7 +301,6 @@ export function AdminPage() {
     mutationFn: async (form: ProductFormState) => {
       const input = {
         category_id: form.categoryId,
-        currency: form.currency,
         is_active: form.isActive,
         is_featured: form.isFeatured,
         name: form.name,
@@ -342,7 +335,7 @@ export function AdminPage() {
       }
     },
     onSuccess: () => {
-      setProductForm(createEmptyProductForm(currency))
+      setProductForm(createEmptyProductForm())
       void queryClient.invalidateQueries({
         queryKey: adminQueryKeys.products(),
       })
@@ -464,7 +457,7 @@ export function AdminPage() {
     },
   })
 
-  if (isLoading || !labels || !currency || !locale) {
+  if (isLoading || !labels || !locale) {
     return <AdminSkeleton />
   }
 
@@ -585,7 +578,6 @@ export function AdminPage() {
           ) : null}
           {activeTab === 'orders' ? (
             <OrdersAdmin
-              currency={currency}
               labels={labels}
               locale={locale}
               orders={orders}
@@ -690,14 +682,6 @@ function ProductsAdmin({
             />
             <Input
               required
-              placeholder={labels.currency}
-              value={form.currency}
-              onChange={(event) => {
-                setForm({ ...form, currency: event.target.value })
-              }}
-            />
-            <Input
-              required
               placeholder={labels.stock}
               type="number"
               value={form.stockQuantity}
@@ -762,7 +746,6 @@ function ProductsAdmin({
                   onClick={() => {
                     setForm({
                       categoryId: product.category_id,
-                      currency: product.currency,
                       id: product.id,
                       imageAlt: product.name,
                       imageFile: null,
@@ -1053,7 +1036,6 @@ function SettingsAdmin({
 }
 
 interface OrdersAdminProps {
-  currency: string
   labels: AdminLabels
   locale: string
   orders: TableRow<'orders'>[]
@@ -1061,7 +1043,6 @@ interface OrdersAdminProps {
 }
 
 function OrdersAdmin({
-  currency,
   labels,
   locale,
   orders,
@@ -1080,7 +1061,7 @@ function OrdersAdmin({
                 {order.customer_name} · {order.customer_phone}
               </Typography>
               <Typography variant="body-sm">
-                {formatCurrency(order.total_amount, currency, locale)}
+                {formatCurrency(order.total_amount, locale)}
               </Typography>
             </div>
             <Select

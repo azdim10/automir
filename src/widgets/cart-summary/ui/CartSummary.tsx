@@ -8,11 +8,10 @@ interface CartSummaryLabels {
 
 interface CartSummaryProps {
   labels: CartSummaryLabels
-  currency: string
   locale: string
 }
 
-export function CartSummary({ labels, currency, locale }: CartSummaryProps) {
+export function CartSummary({ labels, locale }: CartSummaryProps) {
   const { items, itemsCount, total } = useCart()
 
   return (
@@ -31,7 +30,7 @@ export function CartSummary({ labels, currency, locale }: CartSummaryProps) {
       </ul>
       <div className="mt-4 flex justify-between gap-4 font-semibold">
         <span>{labels.total}</span>
-        <span>{formatCurrency(total, currency, locale)}</span>
+        <span>{formatCurrency(total, locale)}</span>
       </div>
     </aside>
   )

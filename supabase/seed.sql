@@ -1,7 +1,6 @@
 insert into public.site_settings (key, value)
 values
   ('locale', '"ru-RU"'::jsonb),
-  ('currency', '"RUB"'::jsonb),
   (
     'admin_labels',
     '{
@@ -11,7 +10,6 @@ values
       "adminTitle": "Админ-панель",
       "category": "Категория",
       "categories": "Категории",
-      "currency": "Валюта",
       "delete": "Удалить",
       "email": "Email",
       "image": "Изображение",
@@ -108,6 +106,7 @@ values
     }'::jsonb
   ),
   ('product_labels', '{"addToCart":"Добавить в корзину","attributes":"Характеристики","description":"Описание","sku":"Артикул"}'::jsonb),
+  ('header_labels', '{"catalog":"Каталог"}'::jsonb),
   ('catalog_page_size', '12'::jsonb),
   (
     'catalog_labels',
@@ -158,8 +157,7 @@ select p.id, 'hero', 0, '{
   "title": "Automir",
   "description": "Качественные товары с быстрой доставкой по всей стране",
   "actions": [
-    { "label": "Каталог", "href": "catalog", "variant": "primary" },
-    { "label": "Корзина", "href": "cart", "variant": "outline" }
+    { "label": "Каталог", "href": "catalog", "variant": "primary" }
   ]
 }'::jsonb, true
 from public.pages p

@@ -1,4 +1,5 @@
 import { supabase } from '@shared/api/supabase'
+import { STORE_CURRENCY } from '@shared/config'
 import { normalizeSupabaseError } from '@shared/lib/errors'
 
 import type { CreatedOrder, CreateOrderInput } from '../model/order.types'
@@ -25,7 +26,7 @@ export async function createOrder(
     customer_email: input.customer.email,
     delivery_address: input.customer.deliveryAddress,
     total_amount: totalAmount,
-    currency: input.currency,
+    currency: STORE_CURRENCY,
   })
 
   if (orderError) {
@@ -52,6 +53,5 @@ export async function createOrder(
     id: orderId,
     status,
     totalAmount,
-    currency: input.currency,
   }
 }

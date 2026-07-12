@@ -108,11 +108,10 @@ export function CheckoutPage() {
   const { items, total, clear } = useCart()
   const { data: siteSettings } = useSiteSettings()
   const createOrderMutation = useCreateOrder()
-  const currency = siteSettings?.currency
   const locale = siteSettings?.locale
   const labels = parseCheckoutLabels(siteSettings?.checkout_labels)
 
-  if (typeof locale !== 'string' || typeof currency !== 'string' || !labels) {
+  if (typeof locale !== 'string' || !labels) {
     return <CheckoutPageSkeleton />
   }
 
@@ -171,7 +170,6 @@ export function CheckoutPage() {
                       createOrderMutation.mutate(
                         {
                           customer,
-                          currency,
                           items: items.map((item) => ({
                             productId: item.productId,
                             productName: item.name,
@@ -213,7 +211,6 @@ export function CheckoutPage() {
                         <span className="font-medium">
                           {formatCurrency(
                             item.price * item.quantity,
-                            item.currency,
                             locale,
                           )}
                         </span>
@@ -222,7 +219,7 @@ export function CheckoutPage() {
                   </ul>
                   <div className="flex justify-between gap-4 text-lg font-semibold">
                     <span>{labels.total}</span>
-                    <span>{formatCurrency(total, currency, locale)}</span>
+                    <span>{formatCurrency(total, locale)}</span>
                   </div>
                 </CardContent>
               </Card>
