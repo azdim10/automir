@@ -129,8 +129,6 @@ export function ShopLayout() {
         headerLabels={headerLabels}
         logoAlt={siteProfile.logoAlt}
         logoUrl={siteProfile.logoUrl}
-        phone={siteProfile.phone}
-        storeName={siteProfile.storeName}
       />
       <Outlet />
     </>

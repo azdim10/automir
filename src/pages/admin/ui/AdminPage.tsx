@@ -991,7 +991,7 @@ function SettingsAdmin({
             </Typography>
             {form.logoUrl ? (
               <img
-                className="h-20 w-20 rounded-lg object-contain"
+                className="h-16 w-full max-w-md object-contain object-left"
                 src={form.logoUrl}
                 alt={form.logoAlt}
               />

@@ -3,7 +3,7 @@ import { Link, NavLink } from 'react-router'
 import { useCart } from '@entities/cart'
 import { RequestCallbackButton, type CallbackLabels } from '@features/request-callback'
 import { cn } from '@shared/lib/styles/cn'
-import { Container, Skeleton, Typography } from '@shared/ui'
+import { Container, Skeleton } from '@shared/ui'
 import { CartIcon } from '@shared/ui/icon/CartIcon'
 
 import {
@@ -17,8 +17,6 @@ interface AppHeaderProps {
   headerLabels: HeaderLabels
   logoAlt: string | null
   logoUrl: string | null
-  phone: string | null
-  storeName: string
 }
 
 const navLinkClassName = ({ isActive }: { isActive: boolean }) =>
@@ -38,53 +36,38 @@ export function AppHeader({
   headerLabels,
   logoAlt,
   logoUrl,
-  phone,
-  storeName,
 }: AppHeaderProps) {
   const { itemsCount } = useCart()
   const navItems = getHeaderNavItems(headerLabels)
 
   return (
     <header className="sticky top-0 z-40 border-b border-slate-200 bg-white/95 backdrop-blur">
-      <Container className="flex items-center justify-between gap-4 py-4">
-        <Link className="flex min-w-0 items-center gap-3" to="/">
+      <Container className="flex items-center justify-between gap-4 py-3">
+        <Link
+          aria-label={headerLabels.home}
+          className="inline-flex max-w-[10rem] shrink-0 sm:max-w-[14rem] lg:max-w-[18rem]"
+          to="/"
+        >
           {logoUrl ? (
             <img
-              className="h-10 w-10 shrink-0 rounded-lg object-cover"
+              alt={logoAlt ?? headerLabels.home}
+              className="h-10 w-auto max-w-full object-contain sm:h-12"
               src={logoUrl}
-              alt={logoAlt ?? storeName}
             />
           ) : (
-            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-slate-900 text-sm font-semibold text-white">
-              {storeName.slice(0, 1).toUpperCase()}
-            </div>
+            <span className="block h-10 w-full min-w-[8rem] rounded bg-slate-100 sm:h-12" />
           )}
-          <div className="min-w-0">
-            <Typography
-              as="span"
-              className="block truncate"
-              variant="body"
-              weight="semibold"
-            >
-              {storeName}
-            </Typography>
-            {phone ? (
-              <Typography
-                as="span"
-                className="block truncate text-slate-500"
-                variant="caption"
-              >
-                {phone}
-              </Typography>
-            ) : null}
-          </div>
         </Link>
 
         <nav className="hidden flex-1 justify-center md:flex">
           <ul className="flex flex-wrap items-center gap-2">
             {navItems.map((item) => (
               <li key={item.to}>
-                <NavLink className={navLinkClassName} end={item.to === '/'} to={item.to}>
+                <NavLink
+                  className={navLinkClassName}
+                  end={item.to === '/'}
+                  to={item.to}
+                >
                   {item.label}
                 </NavLink>
               </li>
@@ -117,14 +100,8 @@ export function AppHeader({
 export function AppHeaderSkeleton() {
   return (
     <header className="border-b border-slate-200 bg-white">
-      <Container className="flex items-center justify-between gap-4 py-4">
-        <div className="flex items-center gap-3">
-          <Skeleton className="h-10 w-10 rounded-lg" />
-          <div className="grid gap-2">
-            <Skeleton className="h-4 w-32" />
-            <Skeleton className="h-3 w-24" />
-          </div>
-        </div>
+      <Container className="flex items-center justify-between gap-4 py-3">
+        <Skeleton className="h-10 w-40 sm:h-12 sm:w-56" />
         <div className="flex gap-2">
           <Skeleton className="h-11 w-11 rounded-full" />
           <Skeleton className="h-11 w-11 rounded-full" />
