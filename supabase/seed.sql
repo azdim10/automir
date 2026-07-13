@@ -51,7 +51,22 @@ values
       "storePhone": "Телефон",
       "telegram": "Telegram",
       "vk": "VK",
-      "whatsapp": "WhatsApp"
+      "whatsapp": "WhatsApp",
+      "description": "Описание",
+      "productType": "Тип",
+      "packingNorm": "Норма упаковки",
+      "applicationArea": "Область применения",
+      "specifications": "Технические характеристики",
+      "modifications": "Модификации",
+      "sketch": "Эскиз изделия",
+      "sketchAlt": "Описание эскиза",
+      "addRow": "Добавить строку",
+      "removeRow": "Удалить",
+      "specificationName": "Параметр",
+      "specificationValue": "Значение",
+      "modificationDesignation": "Обозначение",
+      "modificationFeatures": "Отличительные особенности",
+      "modificationApplicability": "Применяемость"
     }'::jsonb
   ),
   (
@@ -116,7 +131,24 @@ values
       "backToCart": "Вернуться в каталог"
     }'::jsonb
   ),
-  ('product_labels', '{"addToCart":"Добавить в корзину","attributes":"Характеристики","description":"Описание","sku":"Артикул"}'::jsonb),
+  ('product_labels', '{
+    "addToCart": "Добавить в корзину",
+    "attributes": "Характеристики",
+    "description": "Описание",
+    "sku": "Артикул",
+    "generalInfo": "Общие сведения",
+    "productType": "Тип",
+    "packingNorm": "Норма упаковки",
+    "applicationArea": "Область применения",
+    "specifications": "Технические характеристики",
+    "modifications": "Модификации",
+    "sketch": "Эскиз изделия",
+    "specificationName": "Параметр",
+    "specificationValue": "Значение",
+    "modificationDesignation": "Обозначение",
+    "modificationFeatures": "Отличительные особенности",
+    "modificationApplicability": "Применяемость"
+  }'::jsonb),
   ('header_labels', '{
     "home": "Главная",
     "catalog": "Каталог",

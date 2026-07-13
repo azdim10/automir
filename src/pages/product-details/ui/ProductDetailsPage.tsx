@@ -5,13 +5,25 @@ import { ProductGallery, ProductPrice, useProduct } from '@entities/product'
 import { AddToCartButton } from '@features/add-to-cart'
 import type { Json } from '@shared/api/supabase'
 import { getJsonString, isJsonRecord } from '@shared/lib/json'
-import { Card, CardContent, Container, Skeleton, Typography } from '@shared/ui'
+import { Container, Skeleton, Typography } from '@shared/ui'
 
 interface ProductLabels {
   addToCart: string
+  applicationArea: string
   attributes: string
   description: string
+  generalInfo: string
+  modificationApplicability: string
+  modificationDesignation: string
+  modificationFeatures: string
+  modifications: string
+  packingNorm: string
+  productType: string
+  sketch: string
   sku: string
+  specificationName: string
+  specifications: string
+  specificationValue: string
 }
 
 function parseProductLabels(value: Json | undefined): ProductLabels | null {
@@ -19,21 +31,49 @@ function parseProductLabels(value: Json | undefined): ProductLabels | null {
     return null
   }
 
-  const addToCart = getJsonString(value, 'addToCart')
-  const attributes = getJsonString(value, 'attributes')
-  const description = getJsonString(value, 'description')
-  const sku = getJsonString(value, 'sku')
+  const keys: (keyof ProductLabels)[] = [
+    'addToCart',
+    'applicationArea',
+    'attributes',
+    'description',
+    'generalInfo',
+    'modificationApplicability',
+    'modificationDesignation',
+    'modificationFeatures',
+    'modifications',
+    'packingNorm',
+    'productType',
+    'sketch',
+    'sku',
+    'specificationName',
+    'specifications',
+    'specificationValue',
+  ]
+  const labels: Partial<ProductLabels> = {}
 
-  if (!addToCart || !attributes || !description || !sku) {
-    return null
+  for (const key of keys) {
+    const label = getJsonString(value, key)
+
+    if (!label) {
+      return null
+    }
+
+    labels[key] = label
   }
 
-  return {
-    addToCart,
-    attributes,
-    description,
-    sku,
-  }
+  return labels as ProductLabels
+}
+
+function SectionTitle({ children }: { children: string }) {
+  return (
+    <Typography
+      as="h2"
+      className="text-lg font-bold uppercase tracking-wide text-sky-800"
+      variant="h3"
+    >
+      {children}
+    </Typography>
+  )
 }
 
 function ProductDetailsSkeleton() {
@@ -47,8 +87,11 @@ function ProductDetailsSkeleton() {
             <Skeleton className="h-8 w-40" />
             <Skeleton className="h-12 w-48" />
             <Skeleton className="h-32 w-full" />
-            <Skeleton className="h-48 w-full" />
           </div>
+        </div>
+        <div className="mt-10 grid gap-6">
+          <Skeleton className="h-48 w-full" />
+          <Skeleton className="h-64 w-full" />
         </div>
       </Container>
     </main>
@@ -73,6 +116,13 @@ export function ProductDetailsPage() {
     return <ProductDetailsSkeleton />
   }
 
+  const hasGeneralInfo = Boolean(
+    product.productType ??
+      product.packingNorm ??
+      product.applicationArea ??
+      product.description,
+  )
+
   return (
     <main className="py-10">
       <Container>
@@ -93,43 +143,152 @@ export function ProductDetailsPage() {
               />
             </div>
             <AddToCartButton label={labels.addToCart} product={product} />
-            {product.description ? (
-              <Card>
-                <CardContent>
-                  <Typography as="h2" variant="h3" weight="semibold">
-                    {labels.description}
+          </div>
+        </div>
+
+        <div className="mt-10 grid gap-8">
+          {hasGeneralInfo ? (
+            <section className="grid gap-4">
+              <SectionTitle>{labels.generalInfo}</SectionTitle>
+              <div className="grid gap-3 rounded-lg border border-slate-200 p-4">
+                {product.productType ? (
+                  <Typography className="text-slate-700" variant="body">
+                    <span className="font-semibold">{labels.productType}:</span>{' '}
+                    {product.productType}
                   </Typography>
-                  <Typography className="whitespace-pre-line text-slate-600">
+                ) : null}
+                {product.packingNorm ? (
+                  <Typography className="text-slate-700" variant="body">
+                    <span className="font-semibold">{labels.packingNorm}:</span>{' '}
+                    {product.packingNorm}
+                  </Typography>
+                ) : null}
+                {product.applicationArea ? (
+                  <Typography className="text-slate-700" variant="body">
+                    <span className="font-semibold">
+                      {labels.applicationArea}:
+                    </span>{' '}
+                    {product.applicationArea}
+                  </Typography>
+                ) : null}
+                {product.description ? (
+                  <Typography className="whitespace-pre-line text-slate-600" variant="body">
                     {product.description}
                   </Typography>
-                </CardContent>
-              </Card>
-            ) : null}
-            {product.attributes.length > 0 ? (
-              <Card>
-                <CardContent>
-                  <Typography as="h2" variant="h3" weight="semibold">
-                    {labels.attributes}
-                  </Typography>
-                  <dl className="grid gap-3">
+                ) : null}
+              </div>
+            </section>
+          ) : null}
+
+          {product.specifications.length > 0 ? (
+            <section className="grid gap-4">
+              <SectionTitle>{labels.specifications}</SectionTitle>
+              <div className="overflow-x-auto rounded-lg border border-slate-200">
+                <table className="min-w-full border-collapse text-sm">
+                  <thead>
+                    <tr className="border-b border-slate-200 bg-slate-50">
+                      <th className="px-4 py-3 text-left font-semibold text-slate-700">
+                        {labels.specificationName}
+                      </th>
+                      <th className="px-4 py-3 text-left font-semibold text-slate-700">
+                        {labels.specificationValue}
+                      </th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {product.specifications.map((item) => (
+                      <tr
+                        className="border-b border-slate-100 last:border-b-0"
+                        key={item.id}
+                      >
+                        <td className="px-4 py-3 text-slate-600">{item.name}</td>
+                        <td className="px-4 py-3 font-medium text-slate-900">
+                          {item.value}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </section>
+          ) : null}
+
+          {product.modifications.length > 0 ? (
+            <section className="grid gap-4">
+              <SectionTitle>{labels.modifications}</SectionTitle>
+              <div className="overflow-x-auto rounded-lg border border-slate-200">
+                <table className="min-w-full border-collapse text-sm">
+                  <thead>
+                    <tr className="border-b border-slate-200 bg-slate-50">
+                      <th className="px-4 py-3 text-left font-semibold text-slate-700">
+                        {labels.modificationDesignation}
+                      </th>
+                      <th className="px-4 py-3 text-left font-semibold text-slate-700">
+                        {labels.modificationFeatures}
+                      </th>
+                      <th className="px-4 py-3 text-left font-semibold text-slate-700">
+                        {labels.modificationApplicability}
+                      </th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {product.modifications.map((item) => (
+                      <tr
+                        className="border-b border-slate-100 last:border-b-0"
+                        key={item.id}
+                      >
+                        <td className="px-4 py-3 font-medium text-slate-900">
+                          {item.designation}
+                        </td>
+                        <td className="px-4 py-3 text-slate-600">
+                          {item.features}
+                        </td>
+                        <td className="px-4 py-3 text-slate-600">
+                          {item.applicability}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </section>
+          ) : null}
+
+          {product.sketchUrl ? (
+            <section className="grid gap-4">
+              <SectionTitle>{labels.sketch}</SectionTitle>
+              <img
+                alt={product.sketchAlt ?? product.name}
+                className="max-h-[32rem] w-full rounded-lg border border-slate-200 object-contain"
+                src={product.sketchUrl}
+              />
+            </section>
+          ) : null}
+
+          {product.attributes.length > 0 ? (
+            <section className="grid gap-4">
+              <SectionTitle>{labels.attributes}</SectionTitle>
+              <div className="overflow-x-auto rounded-lg border border-slate-200">
+                <table className="min-w-full border-collapse text-sm">
+                  <tbody>
                     {product.attributes.map((attribute) => (
-                      <div
-                        className="grid gap-1 border-b border-slate-100 pb-3 last:border-b-0 last:pb-0 sm:grid-cols-2"
+                      <tr
+                        className="border-b border-slate-100 last:border-b-0"
                         key={attribute.id}
                       >
-                        <dt className="text-sm text-slate-500">
+                        <td className="w-1/2 px-4 py-3 text-slate-600">
                           {attribute.name}
-                        </dt>
-                        <dd className="text-sm font-medium text-slate-900">
+                        </td>
+                        <td className="px-4 py-3 font-medium text-slate-900">
                           {attribute.value}
-                        </dd>
-                      </div>
+                        </td>
+                      </tr>
                     ))}
-                  </dl>
-                </CardContent>
-              </Card>
-            ) : null}
-          </div>
+                  </tbody>
+                </table>
+              </div>
+            </section>
+          ) : null}
         </div>
       </Container>
     </main>

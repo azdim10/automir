@@ -27,6 +27,23 @@ export interface ProductAttribute {
   sortOrder: number
 }
 
+export interface ProductSpecification {
+  id: string
+  productId: string
+  name: string
+  value: string
+  sortOrder: number
+}
+
+export interface ProductModification {
+  id: string
+  productId: string
+  designation: string
+  features: string
+  applicability: string
+  sortOrder: number
+}
+
 export interface ProductCategory {
   id: string
   slug: string
@@ -41,6 +58,11 @@ export interface Product {
   name: string
   shortDescription: string | null
   description: string | null
+  productType: string | null
+  packingNorm: string | null
+  applicationArea: string | null
+  sketchUrl: string | null
+  sketchAlt: string | null
   price: number
   oldPrice: number | null
   sku: string
@@ -48,6 +70,8 @@ export interface Product {
   isFeatured: boolean
   images: ProductImage[]
   attributes: ProductAttribute[]
+  specifications: ProductSpecification[]
+  modifications: ProductModification[]
   createdAt: string
   updatedAt: string
 }

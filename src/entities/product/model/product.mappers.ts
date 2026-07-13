@@ -5,6 +5,8 @@ import type {
   ProductAttribute,
   ProductCategory,
   ProductImage,
+  ProductModification,
+  ProductSpecification,
 } from './product.types'
 
 export function mapProductImage(row: TableRow<'product_images'>): ProductImage {
@@ -30,6 +32,31 @@ export function mapProductAttribute(
   }
 }
 
+export function mapProductSpecification(
+  row: TableRow<'product_specifications'>,
+): ProductSpecification {
+  return {
+    id: row.id,
+    productId: row.product_id,
+    name: row.name,
+    value: row.value,
+    sortOrder: row.sort_order,
+  }
+}
+
+export function mapProductModification(
+  row: TableRow<'product_modifications'>,
+): ProductModification {
+  return {
+    id: row.id,
+    productId: row.product_id,
+    designation: row.designation,
+    features: row.features,
+    applicability: row.applicability,
+    sortOrder: row.sort_order,
+  }
+}
+
 export function mapProductCategory(
   row: TableRow<'categories'>,
 ): ProductCategory {
@@ -45,6 +72,8 @@ interface MapProductParams {
   category: ProductCategory | null
   images: ProductImage[]
   attributes: ProductAttribute[]
+  specifications: ProductSpecification[]
+  modifications: ProductModification[]
 }
 
 export function mapProduct({
@@ -52,6 +81,8 @@ export function mapProduct({
   category,
   images,
   attributes,
+  specifications,
+  modifications,
 }: MapProductParams): Product {
   return {
     id: row.id,
@@ -61,6 +92,11 @@ export function mapProduct({
     name: row.name,
     shortDescription: row.short_description,
     description: row.description,
+    productType: row.product_type,
+    packingNorm: row.packing_norm,
+    applicationArea: row.application_area,
+    sketchUrl: row.sketch_url,
+    sketchAlt: row.sketch_alt,
     price: row.price,
     oldPrice: row.old_price,
     sku: row.sku,
@@ -68,6 +104,8 @@ export function mapProduct({
     isFeatured: row.is_featured,
     images,
     attributes,
+    specifications,
+    modifications,
     createdAt: row.created_at,
     updatedAt: row.updated_at,
   }

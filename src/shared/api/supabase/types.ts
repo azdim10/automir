@@ -217,6 +217,11 @@ export interface Database {
           name: string
           short_description: string | null
           description: string | null
+          product_type: string | null
+          packing_norm: string | null
+          application_area: string | null
+          sketch_url: string | null
+          sketch_alt: string | null
           price: number
           old_price: number | null
           currency: string
@@ -234,6 +239,11 @@ export interface Database {
           name: string
           short_description?: string | null
           description?: string | null
+          product_type?: string | null
+          packing_norm?: string | null
+          application_area?: string | null
+          sketch_url?: string | null
+          sketch_alt?: string | null
           price: number
           old_price?: number | null
           currency: string
@@ -251,6 +261,11 @@ export interface Database {
           name?: string
           short_description?: string | null
           description?: string | null
+          product_type?: string | null
+          packing_norm?: string | null
+          application_area?: string | null
+          sketch_url?: string | null
+          sketch_alt?: string | null
           price?: number
           old_price?: number | null
           currency?: string
@@ -338,6 +353,73 @@ export interface Database {
         Relationships: [
           {
             foreignKeyName: 'product_attributes_product_id_fkey'
+            columns: ['product_id']
+            isOneToOne: false
+            referencedRelation: 'products'
+            referencedColumns: ['id']
+          },
+        ]
+      }
+      product_specifications: {
+        Row: {
+          id: string
+          product_id: string
+          name: string
+          value: string
+          sort_order: number
+        }
+        Insert: {
+          id?: string
+          product_id: string
+          name: string
+          value: string
+          sort_order?: number
+        }
+        Update: {
+          id?: string
+          product_id?: string
+          name?: string
+          value?: string
+          sort_order?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: 'product_specifications_product_id_fkey'
+            columns: ['product_id']
+            isOneToOne: false
+            referencedRelation: 'products'
+            referencedColumns: ['id']
+          },
+        ]
+      }
+      product_modifications: {
+        Row: {
+          id: string
+          product_id: string
+          designation: string
+          features: string
+          applicability: string
+          sort_order: number
+        }
+        Insert: {
+          id?: string
+          product_id: string
+          designation: string
+          features?: string
+          applicability?: string
+          sort_order?: number
+        }
+        Update: {
+          id?: string
+          product_id?: string
+          designation?: string
+          features?: string
+          applicability?: string
+          sort_order?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: 'product_modifications_product_id_fkey'
             columns: ['product_id']
             isOneToOne: false
             referencedRelation: 'products'

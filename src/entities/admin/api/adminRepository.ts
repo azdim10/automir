@@ -394,6 +394,233 @@ export async function getAdminProducts(): Promise<TableRow<'products'>[]> {
   return data
 }
 
+export interface AdminProductRecord {
+  modifications: TableRow<'product_modifications'>[]
+  product: TableRow<'products'>
+  specifications: TableRow<'product_specifications'>[]
+}
+
+export interface ProductModificationInput {
+  applicability: string
+  designation: string
+  features: string
+}
+
+export interface ProductSpecificationInput {
+  name: string
+  value: string
+}
+
+export interface SaveAdminProductInput {
+  applicationArea: string
+  categoryId: string
+  description: string
+  id: string | null
+  imageAlt: string
+  imageFile: File | null
+  isActive: boolean
+  isFeatured: boolean
+  modifications: ProductModificationInput[]
+  name: string
+  packingNorm: string
+  price: number
+  productType: string
+  sku: string
+  sketchAlt: string
+  sketchFile: File | null
+  sketchUrl: string
+  slug: string
+  specifications: ProductSpecificationInput[]
+  stockQuantity: number
+}
+
+async function replaceProductSpecifications(
+  productId: string,
+  specifications: ProductSpecificationInput[],
+): Promise<void> {
+  const { error: deleteError } = await supabase
+    .from('product_specifications')
+    .delete()
+    .eq('product_id', productId)
+
+  if (deleteError) {
+    throw normalizeSupabaseError(deleteError)
+  }
+
+  const rows = specifications
+    .map((item, index) => ({
+      name: item.name.trim(),
+      product_id: productId,
+      sort_order: index,
+      value: item.value.trim(),
+    }))
+    .filter((item) => item.name.length > 0 && item.value.length > 0)
+
+  if (rows.length === 0) {
+    return
+  }
+
+  const { error: insertError } = await supabase
+    .from('product_specifications')
+    .insert(rows)
+
+  if (insertError) {
+    throw normalizeSupabaseError(insertError)
+  }
+}
+
+async function replaceProductModifications(
+  productId: string,
+  modifications: ProductModificationInput[],
+): Promise<void> {
+  const { error: deleteError } = await supabase
+    .from('product_modifications')
+    .delete()
+    .eq('product_id', productId)
+
+  if (deleteError) {
+    throw normalizeSupabaseError(deleteError)
+  }
+
+  const rows = modifications
+    .map((item, index) => ({
+      applicability: item.applicability.trim(),
+      designation: item.designation.trim(),
+      features: item.features.trim(),
+      product_id: productId,
+      sort_order: index,
+    }))
+    .filter((item) => item.designation.length > 0)
+
+  if (rows.length === 0) {
+    return
+  }
+
+  const { error: insertError } = await supabase
+    .from('product_modifications')
+    .insert(rows)
+
+  if (insertError) {
+    throw normalizeSupabaseError(insertError)
+  }
+}
+
+export async function getAdminProductsWithDetails(): Promise<
+  AdminProductRecord[]
+> {
+  const products = await getAdminProducts()
+  const productIds = products.map((product) => product.id)
+
+  if (productIds.length === 0) {
+    return []
+  }
+
+  const [specificationsResult, modificationsResult] = await Promise.all([
+    supabase
+      .from('product_specifications')
+      .select('*')
+      .in('product_id', productIds)
+      .order('sort_order', { ascending: true }),
+    supabase
+      .from('product_modifications')
+      .select('*')
+      .in('product_id', productIds)
+      .order('sort_order', { ascending: true }),
+  ])
+
+  if (specificationsResult.error) {
+    throw normalizeSupabaseError(specificationsResult.error)
+  }
+
+  if (modificationsResult.error) {
+    throw normalizeSupabaseError(modificationsResult.error)
+  }
+
+  const specificationsByProductId = new Map<
+    string,
+    TableRow<'product_specifications'>[]
+  >()
+  const modificationsByProductId = new Map<
+    string,
+    TableRow<'product_modifications'>[]
+  >()
+
+  for (const row of specificationsResult.data) {
+    const current = specificationsByProductId.get(row.product_id) ?? []
+    current.push(row)
+    specificationsByProductId.set(row.product_id, current)
+  }
+
+  for (const row of modificationsResult.data) {
+    const current = modificationsByProductId.get(row.product_id) ?? []
+    current.push(row)
+    modificationsByProductId.set(row.product_id, current)
+  }
+
+  return products.map((product) => ({
+    modifications: modificationsByProductId.get(product.id) ?? [],
+    product,
+    specifications: specificationsByProductId.get(product.id) ?? [],
+  }))
+}
+
+export async function saveAdminProductWithDetails(
+  input: SaveAdminProductInput,
+): Promise<void> {
+  const productData: Omit<TableInsert<'products'>, 'currency'> = {
+    application_area: input.applicationArea.trim() || null,
+    category_id: input.categoryId,
+    description: input.description.trim() || null,
+    is_active: input.isActive,
+    is_featured: input.isFeatured,
+    name: input.name,
+    packing_norm: input.packingNorm.trim() || null,
+    price: input.price,
+    product_type: input.productType.trim() || null,
+    sku: input.sku,
+    slug: input.slug,
+    stock_quantity: input.stockQuantity,
+  }
+
+  let productId = input.id
+
+  if (productId) {
+    await updateAdminProduct(productId, productData)
+  } else {
+    productId = await createAdminProduct(productData)
+  }
+
+  let sketchUrl = input.sketchUrl.trim()
+  const sketchAlt = input.sketchAlt.trim() || input.name
+
+  if (input.sketchFile) {
+    const uploaded = await uploadAdminImage({
+      alt: sketchAlt,
+      file: input.sketchFile,
+      folder: `products/${productId}/sketch`,
+    })
+    sketchUrl = uploaded.publicUrl
+  }
+
+  await updateAdminProduct(productId, {
+    sketch_alt: sketchUrl ? sketchAlt : null,
+    sketch_url: sketchUrl || null,
+  })
+
+  if (input.imageFile) {
+    await uploadAdminProductImage({
+      alt: input.imageAlt || input.name,
+      file: input.imageFile,
+      productId,
+    })
+  }
+
+  await Promise.all([
+    replaceProductSpecifications(productId, input.specifications),
+    replaceProductModifications(productId, input.modifications),
+  ])
+}
+
 export async function createAdminProduct(
   input: Omit<TableInsert<'products'>, 'currency'>,
 ): Promise<string> {

@@ -6,6 +6,8 @@ import {
   mapProductAttribute,
   mapProductCategory,
   mapProductImage,
+  mapProductModification,
+  mapProductSpecification,
 } from '../model/product.mappers'
 import type {
   Product,
@@ -14,6 +16,8 @@ import type {
   ProductImage,
   ProductListParams,
   ProductListResult,
+  ProductModification,
+  ProductSpecification,
 } from '../model/product.types'
 
 const DEFAULT_PAGE = 1
@@ -88,6 +92,46 @@ async function getProductsAttributes(
   return groupByProductId(data.map(mapProductAttribute))
 }
 
+async function getProductsSpecifications(
+  productIds: string[],
+): Promise<Map<string, ProductSpecification[]>> {
+  if (productIds.length === 0) {
+    return new Map()
+  }
+
+  const { data, error } = await supabase
+    .from('product_specifications')
+    .select('*')
+    .in('product_id', productIds)
+    .order('sort_order', { ascending: true })
+
+  if (error) {
+    throw normalizeSupabaseError(error)
+  }
+
+  return groupByProductId(data.map(mapProductSpecification))
+}
+
+async function getProductsModifications(
+  productIds: string[],
+): Promise<Map<string, ProductModification[]>> {
+  if (productIds.length === 0) {
+    return new Map()
+  }
+
+  const { data, error } = await supabase
+    .from('product_modifications')
+    .select('*')
+    .in('product_id', productIds)
+    .order('sort_order', { ascending: true })
+
+  if (error) {
+    throw normalizeSupabaseError(error)
+  }
+
+  return groupByProductId(data.map(mapProductModification))
+}
+
 async function getProductsCategories(
   categoryIds: string[],
 ): Promise<Map<string, ProductCategory>> {
@@ -113,10 +157,12 @@ async function hydrateProducts(
   const productIds = rows.map((row) => row.id)
   const categoryIds = Array.from(new Set(rows.map((row) => row.category_id)))
 
-  const [imagesByProductId, attributesByProductId, categoriesById] =
+  const [imagesByProductId, attributesByProductId, specificationsByProductId, modificationsByProductId, categoriesById] =
     await Promise.all([
       getProductsImages(productIds),
       getProductsAttributes(productIds),
+      getProductsSpecifications(productIds),
+      getProductsModifications(productIds),
       getProductsCategories(categoryIds),
     ])
 
@@ -126,6 +172,8 @@ async function hydrateProducts(
       category: categoriesById.get(row.category_id) ?? null,
       images: imagesByProductId.get(row.id) ?? [],
       attributes: attributesByProductId.get(row.id) ?? [],
+      specifications: specificationsByProductId.get(row.id) ?? [],
+      modifications: modificationsByProductId.get(row.id) ?? [],
     }),
   )
 }

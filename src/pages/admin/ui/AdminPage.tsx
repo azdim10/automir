@@ -4,20 +4,18 @@ import { useEffect, useMemo, useState, type SyntheticEvent } from 'react'
 import {
   adminQueryKeys,
   createAdminCategory,
-  createAdminProduct,
   deleteAdminCategory,
   deleteAdminProduct,
   getAdminCallbackRequests,
   getAdminCategories,
   getAdminInfoPages,
   getAdminOrders,
-  getAdminProducts,
+  getAdminProductsWithDetails,
   saveAdminInfoPage,
+  saveAdminProductWithDetails,
   updateAdminCallbackRequestStatus,
   updateAdminCategory,
   updateAdminOrderStatus,
-  updateAdminProduct,
-  uploadAdminProductImage,
   uploadAdminSiteLogo,
   upsertAdminSiteSetting,
 } from '@entities/admin'
@@ -41,6 +39,14 @@ import {
 } from '@shared/ui'
 
 import { PagesAdmin } from './PagesAdmin'
+import {
+  createEmptyProductForm,
+  createProductFormFromRecord,
+  mapProductFormToSaveInput,
+  ProductAdminForm,
+  ProductAdminList,
+  type ProductFormState,
+} from './ProductAdminForm'
 
 type AdminTab =
   | 'products'
@@ -55,12 +61,15 @@ interface AdminLabels {
   active: string
   addCategory: string
   addProduct: string
+  addRow: string
   adminTitle: string
+  applicationArea: string
   callbacks: string
   category: string
   categories: string
   delete: string
   deliveryPage: string
+  description: string
   email: string
   image: string
   imageAlt: string
@@ -70,8 +79,13 @@ interface AdminLabels {
   logoAlt: string
   logout: string
   max: string
+  modificationApplicability: string
+  modificationDesignation: string
+  modificationFeatures: string
+  modifications: string
   name: string
   orders: string
+  packingNorm: string
   pageImage: string
   pageImageAlt: string
   pageMetaDescription: string
@@ -81,15 +95,22 @@ interface AdminLabels {
   password: string
   price: string
   products: string
+  productType: string
+  removeRow: string
   save: string
   sectionText: string
   seoDescription: string
   seoKeywords: string
   seoTitle: string
   settings: string
+  sketch: string
+  sketchAlt: string
   sku: string
   slug: string
   socialLinks: string
+  specificationName: string
+  specifications: string
+  specificationValue: string
   status: string
   stock: string
   storeAddress: string
@@ -99,20 +120,6 @@ interface AdminLabels {
   vk: string
   warrantyPage: string
   whatsapp: string
-}
-
-interface ProductFormState {
-  categoryId: string
-  id: string | null
-  imageAlt: string
-  imageFile: File | null
-  isActive: boolean
-  isFeatured: boolean
-  name: string
-  price: string
-  sku: string
-  slug: string
-  stockQuantity: string
 }
 
 interface CategoryFormState {
@@ -150,12 +157,15 @@ function parseAdminLabels(value: Json | undefined): AdminLabels | null {
     'active',
     'addCategory',
     'addProduct',
+    'addRow',
     'adminTitle',
+    'applicationArea',
     'callbacks',
     'category',
     'categories',
     'delete',
     'deliveryPage',
+    'description',
     'email',
     'image',
     'imageAlt',
@@ -165,8 +175,13 @@ function parseAdminLabels(value: Json | undefined): AdminLabels | null {
     'logoAlt',
     'logout',
     'max',
+    'modificationApplicability',
+    'modificationDesignation',
+    'modificationFeatures',
+    'modifications',
     'name',
     'orders',
+    'packingNorm',
     'pageImage',
     'pageImageAlt',
     'pageMetaDescription',
@@ -176,15 +191,22 @@ function parseAdminLabels(value: Json | undefined): AdminLabels | null {
     'password',
     'price',
     'products',
+    'productType',
+    'removeRow',
     'save',
     'sectionText',
     'seoDescription',
     'seoKeywords',
     'seoTitle',
     'settings',
+    'sketch',
+    'sketchAlt',
     'sku',
     'slug',
     'socialLinks',
+    'specificationName',
+    'specifications',
+    'specificationValue',
     'status',
     'stock',
     'storeAddress',
@@ -223,20 +245,11 @@ function AdminSkeleton() {
   )
 }
 
-function createEmptyProductForm(): ProductFormState {
-  return {
-    categoryId: '',
-    id: null,
-    imageAlt: '',
-    imageFile: null,
-    isActive: true,
-    isFeatured: false,
-    name: '',
-    price: '',
-    sku: '',
-    slug: '',
-    stockQuantity: '0',
-  }
+interface CategoryFormState {
+  id: string | null
+  isActive: boolean
+  name: string
+  slug: string
 }
 
 function createEmptyCategoryForm(): CategoryFormState {
@@ -316,7 +329,7 @@ export function AdminPage() {
   })
   const productsQuery = useQuery({
     queryKey: adminQueryKeys.products(),
-    queryFn: getAdminProducts,
+    queryFn: getAdminProductsWithDetails,
     enabled: isAuthenticated,
   })
   const ordersQuery = useQuery({
@@ -343,40 +356,7 @@ export function AdminPage() {
   })
   const saveProductMutation = useMutation({
     mutationFn: async (form: ProductFormState) => {
-      const input = {
-        category_id: form.categoryId,
-        is_active: form.isActive,
-        is_featured: form.isFeatured,
-        name: form.name,
-        price: Number(form.price),
-        sku: form.sku,
-        slug: form.slug,
-        stock_quantity: Number(form.stockQuantity),
-      }
-
-      const productId = form.id
-
-      if (productId) {
-        await updateAdminProduct(productId, input)
-      } else {
-        const createdProductId = await createAdminProduct(input)
-        if (form.imageFile) {
-          await uploadAdminProductImage({
-            alt: form.imageAlt || form.name,
-            file: form.imageFile,
-            productId: createdProductId,
-          })
-        }
-        return
-      }
-
-      if (form.imageFile) {
-        await uploadAdminProductImage({
-          alt: form.imageAlt || form.name,
-          file: form.imageFile,
-          productId,
-        })
-      }
+      await saveAdminProductWithDetails(mapProductFormToSaveInput(form))
     },
     onSuccess: () => {
       setProductForm(createEmptyProductForm())
@@ -612,24 +592,30 @@ export function AdminPage() {
             )}
           </div>
           {activeTab === 'products' ? (
-            <ProductsAdmin
-              categories={categories}
-              errorMessage={
-                getMutationErrorMessage(saveProductMutation.error) ??
-                getMutationErrorMessage(deleteProductMutation.error)
-              }
-              form={productForm}
-              labels={labels}
-              products={products}
-              setForm={setProductForm}
-              onDelete={(id) => {
-                deleteProductMutation.mutate(id)
-              }}
-              onSubmit={(event) => {
-                event.preventDefault()
-                saveProductMutation.mutate(productForm)
-              }}
-            />
+            <div className="grid gap-6 lg:grid-cols-[28rem_minmax(0,1fr)]">
+              <ProductAdminForm
+                categories={categories}
+                errorMessage={getMutationErrorMessage(saveProductMutation.error)}
+                form={productForm}
+                labels={labels}
+                setForm={setProductForm}
+                onSubmit={(event) => {
+                  event.preventDefault()
+                  saveProductMutation.mutate(productForm)
+                }}
+              />
+              <ProductAdminList
+                errorMessage={getMutationErrorMessage(deleteProductMutation.error)}
+                labels={labels}
+                products={products}
+                onDelete={(id) => {
+                  deleteProductMutation.mutate(id)
+                }}
+                onEdit={(record) => {
+                  setProductForm(createProductFormFromRecord(record))
+                }}
+              />
+            </div>
           ) : null}
           {activeTab === 'categories' ? (
             <CategoriesAdmin
@@ -695,185 +681,6 @@ export function AdminPage() {
         </div>
       </Container>
     </main>
-  )
-}
-
-interface ProductsAdminProps {
-  categories: TableRow<'categories'>[]
-  errorMessage: string | null
-  form: ProductFormState
-  labels: AdminLabels
-  products: TableRow<'products'>[]
-  setForm: (form: ProductFormState) => void
-  onDelete: (id: string) => void
-  onSubmit: (event: SyntheticEvent<HTMLFormElement>) => void
-}
-
-function ProductsAdmin({
-  categories,
-  errorMessage,
-  form,
-  labels,
-  products,
-  setForm,
-  onDelete,
-  onSubmit,
-}: ProductsAdminProps) {
-  return (
-    <div className="grid gap-6 lg:grid-cols-[24rem_minmax(0,1fr)]">
-      <Card>
-        <CardContent>
-          <Typography as="h2" variant="h3" weight="semibold">
-            {labels.addProduct}
-          </Typography>
-          <form className="grid gap-3" onSubmit={onSubmit}>
-            <Input
-              required
-              placeholder={labels.name}
-              value={form.name}
-              onChange={(event) => {
-                setForm({ ...form, name: event.target.value })
-              }}
-            />
-            <Input
-              required
-              placeholder={labels.slug}
-              value={form.slug}
-              onChange={(event) => {
-                setForm({ ...form, slug: event.target.value })
-              }}
-            />
-            <Input
-              required
-              placeholder={labels.sku}
-              value={form.sku}
-              onChange={(event) => {
-                setForm({ ...form, sku: event.target.value })
-              }}
-            />
-            <Select
-              required
-              value={form.categoryId}
-              options={[
-                { value: '', label: labels.category },
-                ...categories.map((category) => ({
-                  value: category.id,
-                  label: category.name,
-                })),
-              ]}
-              onChange={(event) => {
-                setForm({ ...form, categoryId: event.target.value })
-              }}
-            />
-            <Input
-              required
-              placeholder={labels.price}
-              type="number"
-              value={form.price}
-              onChange={(event) => {
-                setForm({ ...form, price: event.target.value })
-              }}
-            />
-            <Input
-              required
-              placeholder={labels.stock}
-              type="number"
-              value={form.stockQuantity}
-              onChange={(event) => {
-                setForm({ ...form, stockQuantity: event.target.value })
-              }}
-            />
-            <Input
-              placeholder={labels.imageAlt}
-              value={form.imageAlt}
-              onChange={(event) => {
-                setForm({ ...form, imageAlt: event.target.value })
-              }}
-            />
-            <label className="grid gap-2">
-              <span className="text-sm font-medium">{labels.image}</span>
-              <Input
-                accept="image/*"
-                type="file"
-                onChange={(event) => {
-                  setForm({
-                    ...form,
-                    imageFile: event.target.files?.[0] ?? null,
-                  })
-                }}
-              />
-            </label>
-            <Select
-              value={String(form.isActive)}
-              options={[
-                { value: 'true', label: labels.active },
-                { value: 'false', label: labels.inactive },
-              ]}
-              onChange={(event) => {
-                setForm({ ...form, isActive: event.target.value === 'true' })
-              }}
-            />
-            <Button type="submit">{labels.save}</Button>
-            {errorMessage ? (
-              <Typography className="text-red-600" variant="body-sm">
-                {errorMessage}
-              </Typography>
-            ) : null}
-          </form>
-        </CardContent>
-      </Card>
-      <div className="grid gap-3">
-        {products.map((product) => (
-          <Card key={product.id}>
-            <CardContent className="grid gap-3 md:grid-cols-[minmax(0,1fr)_auto]">
-              <div>
-                <Typography as="h3" variant="h3" weight="semibold">
-                  {product.name}
-                </Typography>
-                <Typography className="text-slate-500" variant="body-sm">
-                  {product.sku} · {product.slug}
-                </Typography>
-              </div>
-              <div className="flex flex-wrap gap-2">
-                <Button
-                  variant="outline"
-                  onClick={() => {
-                    setForm({
-                      categoryId: product.category_id,
-                      id: product.id,
-                      imageAlt: product.name,
-                      imageFile: null,
-                      isActive: product.is_active,
-                      isFeatured: product.is_featured,
-                      name: product.name,
-                      price: String(product.price),
-                      sku: product.sku,
-                      slug: product.slug,
-                      stockQuantity: String(product.stock_quantity),
-                    })
-                  }}
-                >
-                  {labels.save}
-                </Button>
-                <Button
-                  variant="danger"
-                  onClick={() => {
-                    onDelete(product.id)
-                  }}
-                >
-                  {labels.delete}
-                </Button>
-              </div>
-            </CardContent>
-          </Card>
-        ))}
-        {errorMessage ? (
-          <Typography className="text-red-600" variant="body-sm">
-            {errorMessage}
-          </Typography>
-        ) : null}
-      </div>
-    </div>
   )
 }
 
