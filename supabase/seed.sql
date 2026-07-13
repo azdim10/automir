@@ -12,6 +12,7 @@ values
       "category": "Категория",
       "categories": "Категории",
       "delete": "Удалить",
+      "edit": "Редактировать",
       "email": "Email",
       "image": "Изображение",
       "imageAlt": "Описание изображения",

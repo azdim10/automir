@@ -85,6 +85,7 @@ interface AdminLabels {
   description: string
   descriptionLeft: string
   descriptionRight: string
+  edit: string
   email: string
   footer: string
   footerAddress: string
@@ -212,6 +213,7 @@ function parseAdminLabels(value: Json | undefined): AdminLabels | null {
     'description',
     'descriptionLeft',
     'descriptionRight',
+    'edit',
     'email',
     'footer',
     'footerAddress',
@@ -928,7 +930,7 @@ function CategoriesAdmin({
                     })
                   }}
                 >
-                  {labels.save}
+                  {labels.edit}
                 </Button>
                 <Button
                   variant="danger"

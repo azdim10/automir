@@ -95,10 +95,10 @@ export function MediaLibraryModal({
           </Typography>
         ) : null}
         {!isLoading && assets.length > 0 ? (
-          <div className="grid max-h-[28rem] gap-3 overflow-y-auto sm:grid-cols-2 lg:grid-cols-3">
+          <div className="grid max-h-[28rem] gap-3 overflow-x-hidden overflow-y-auto sm:grid-cols-2 lg:grid-cols-3">
             {assets.map((asset) => (
               <article
-                className="grid gap-2 rounded-lg border border-slate-200 p-2"
+                className="grid min-w-0 gap-2 rounded-lg border border-slate-200 p-2"
                 key={asset.id}
               >
                 <img
@@ -109,9 +109,8 @@ export function MediaLibraryModal({
                 <Typography className="truncate text-slate-600" variant="caption">
                   {asset.alt}
                 </Typography>
-                <div className="flex gap-2">
+                <div className="grid grid-cols-2 gap-2">
                   <Button
-                    fullWidth
                     size="sm"
                     onClick={() => {
                       onSelect(asset)

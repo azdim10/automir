@@ -63,6 +63,7 @@ interface ProductAdminLabels {
   category: string
   delete: string
   description: string
+  edit: string
   image: string
   imageAlt: string
   inactive: string
@@ -593,7 +594,7 @@ export function ProductAdminForm({
 
 interface ProductAdminListProps {
   errorMessage: string | null
-  labels: Pick<ProductAdminLabels, 'delete' | 'save'>
+  labels: Pick<ProductAdminLabels, 'delete' | 'edit'>
   products: AdminProductRecord[]
   onDelete: (id: string) => void
   onEdit: (record: AdminProductRecord) => void
@@ -626,7 +627,7 @@ export function ProductAdminList({
                   onEdit(record)
                 }}
               >
-                {labels.save}
+                {labels.edit}
               </Button>
               <Button
                 variant="danger"
