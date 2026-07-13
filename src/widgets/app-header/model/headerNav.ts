@@ -19,7 +19,7 @@ export interface HeaderNavItem {
 export function getHeaderNavItems(labels: HeaderLabels): HeaderNavItem[] {
   return [
     { label: labels.home, to: '/' },
-    { label: labels.catalog, to: '/catalog' },
+    { label: labels.catalog, to: '/catalog/categories' },
     { label: labels.delivery, to: '/delivery' },
     { label: labels.warranty, to: '/warranty' },
     { label: labels.about, to: '/about' },

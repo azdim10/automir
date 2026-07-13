@@ -1,11 +1,12 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { useEffect, useMemo, useState, type SyntheticEvent } from 'react'
+import { useState, type SyntheticEvent } from 'react'
 
 import {
   adminQueryKeys,
   createAdminCategory,
   deleteAdminCategory,
   deleteAdminProduct,
+  deleteAdminProductImage,
   getAdminCallbackRequests,
   getAdminCategories,
   getAdminInfoPages,
@@ -26,6 +27,10 @@ import { categoryQueryKeys } from '@entities/category'
 import { useSiteSettings } from '@entities/content'
 import { contentQueryKeys } from '@entities/content'
 import { productQueryKeys } from '@entities/product'
+import {
+  defaultMediaImageFieldLabels,
+  MediaImageField,
+} from '@features/media-library'
 import type { Json, TableRow } from '@shared/api/supabase'
 import { formatCurrency } from '@shared/lib/format'
 import { getJsonString, isJsonRecord } from '@shared/lib/json'
@@ -474,6 +479,23 @@ export function AdminPage() {
       })
     },
   })
+  const deleteProductImageMutation = useMutation({
+    mutationFn: deleteAdminProductImage,
+    onSuccess: (_data, imageId) => {
+      setProductForm((current) => ({
+        ...current,
+        existingImages: current.existingImages.filter(
+          (image) => image.id !== imageId,
+        ),
+      }))
+      void queryClient.invalidateQueries({
+        queryKey: adminQueryKeys.products(),
+      })
+      void queryClient.invalidateQueries({
+        queryKey: productQueryKeys.all,
+      })
+    },
+  })
   const saveCategoryMutation = useMutation({
     mutationFn: async (form: CategoryFormState) => {
       const input = {
@@ -724,10 +746,16 @@ export function AdminPage() {
             <div className="grid gap-6 lg:grid-cols-[28rem_minmax(0,1fr)]">
               <ProductAdminForm
                 categories={categories}
-                errorMessage={getMutationErrorMessage(saveProductMutation.error)}
+                errorMessage={
+                  getMutationErrorMessage(saveProductMutation.error) ??
+                  getMutationErrorMessage(deleteProductImageMutation.error)
+                }
                 form={productForm}
                 labels={labels}
                 setForm={setProductForm}
+                onDeleteImage={(imageId) => {
+                  deleteProductImageMutation.mutate(imageId)
+                }}
                 onSubmit={(event) => {
                   event.preventDefault()
                   saveProductMutation.mutate(productForm)
@@ -939,70 +967,6 @@ function SettingsAdmin({
   setForm,
   onSubmit,
 }: SettingsAdminProps) {
-  const selectedLogoPreview = useMemo(() => {
-    if (!form.logoFile) {
-      return null
-    }
-
-    return URL.createObjectURL(form.logoFile)
-  }, [form.logoFile])
-
-  useEffect(() => {
-    return () => {
-      if (selectedLogoPreview) {
-        URL.revokeObjectURL(selectedLogoPreview)
-      }
-    }
-  }, [selectedLogoPreview])
-
-  const logoPreviewSource =
-    selectedLogoPreview ??
-    (form.logoUrl.trim().length > 0 ? form.logoUrl : null)
-
-  const footerBackgroundPreview = useMemo(() => {
-    if (!form.footerBackgroundFile) {
-      return null
-    }
-
-    return URL.createObjectURL(form.footerBackgroundFile)
-  }, [form.footerBackgroundFile])
-
-  useEffect(() => {
-    return () => {
-      if (footerBackgroundPreview) {
-        URL.revokeObjectURL(footerBackgroundPreview)
-      }
-    }
-  }, [footerBackgroundPreview])
-
-  const footerBackgroundPreviewSource =
-    footerBackgroundPreview ??
-    (form.footerBackgroundUrl.trim().length > 0
-      ? form.footerBackgroundUrl
-      : null)
-
-  const footerCertificatePreview = useMemo(() => {
-    if (!form.footerCertificateFile) {
-      return null
-    }
-
-    return URL.createObjectURL(form.footerCertificateFile)
-  }, [form.footerCertificateFile])
-
-  useEffect(() => {
-    return () => {
-      if (footerCertificatePreview) {
-        URL.revokeObjectURL(footerCertificatePreview)
-      }
-    }
-  }, [footerCertificatePreview])
-
-  const footerCertificatePreviewSource =
-    footerCertificatePreview ??
-    (form.footerCertificateUrl.trim().length > 0
-      ? form.footerCertificateUrl
-      : null)
-
   return (
     <Card>
       <CardContent>
@@ -1042,27 +1006,32 @@ function SettingsAdmin({
             <Typography as="h2" variant="h3" weight="semibold">
               {labels.logo}
             </Typography>
-            {logoPreviewSource ? (
-              <img
-                className="h-16 w-full max-w-md object-contain object-left"
-                src={logoPreviewSource}
-                alt={form.logoAlt}
-              />
-            ) : null}
-            <Input
-              placeholder={labels.logoAlt}
-              value={form.logoAlt}
-              onChange={(event) => {
-                setForm({ ...form, logoAlt: event.target.value })
+            <MediaImageField
+              alt={form.logoAlt}
+              altLabel={labels.logoAlt}
+              file={form.logoFile}
+              folderPrefix="settings/logo"
+              imageClassName="h-16 w-full max-w-md object-contain object-left"
+              labels={defaultMediaImageFieldLabels}
+              url={form.logoUrl}
+              onAltChange={(value) => {
+                setForm({ ...form, logoAlt: value })
               }}
-            />
-            <Input
-              accept="image/*"
-              type="file"
-              onChange={(event) => {
+              onClear={() => {
                 setForm({
                   ...form,
-                  logoFile: event.target.files?.[0] ?? null,
+                  logoFile: null,
+                  logoUrl: '',
+                })
+              }}
+              onFileChange={(file) => {
+                setForm({ ...form, logoFile: file })
+              }}
+              onUrlChange={(url) => {
+                setForm({
+                  ...form,
+                  logoFile: null,
+                  logoUrl: url,
                 })
               }}
             />
@@ -1152,54 +1121,64 @@ function SettingsAdmin({
             <Typography as="h3" variant="body" weight="semibold">
               {labels.footerBackground}
             </Typography>
-            {footerBackgroundPreviewSource ? (
-              <img
-                alt={form.footerBackgroundAlt}
-                className="h-32 w-full max-w-3xl rounded-lg object-cover object-center"
-                src={footerBackgroundPreviewSource}
-              />
-            ) : null}
-            <Input
-              placeholder={labels.imageAlt}
-              value={form.footerBackgroundAlt}
-              onChange={(event) => {
-                setForm({ ...form, footerBackgroundAlt: event.target.value })
+            <MediaImageField
+              alt={form.footerBackgroundAlt}
+              altLabel={labels.imageAlt}
+              file={form.footerBackgroundFile}
+              folderPrefix="settings/footer"
+              imageClassName="h-32 w-full max-w-3xl rounded-lg object-cover object-center"
+              labels={defaultMediaImageFieldLabels}
+              url={form.footerBackgroundUrl}
+              onAltChange={(value) => {
+                setForm({ ...form, footerBackgroundAlt: value })
               }}
-            />
-            <Input
-              accept="image/*"
-              type="file"
-              onChange={(event) => {
+              onClear={() => {
                 setForm({
                   ...form,
-                  footerBackgroundFile: event.target.files?.[0] ?? null,
+                  footerBackgroundFile: null,
+                  footerBackgroundUrl: '',
+                })
+              }}
+              onFileChange={(file) => {
+                setForm({ ...form, footerBackgroundFile: file })
+              }}
+              onUrlChange={(url) => {
+                setForm({
+                  ...form,
+                  footerBackgroundFile: null,
+                  footerBackgroundUrl: url,
                 })
               }}
             />
             <Typography as="h3" variant="body" weight="semibold">
               {labels.footerCertificate}
             </Typography>
-            {footerCertificatePreviewSource ? (
-              <img
-                alt={form.footerCertificateAlt}
-                className="h-auto w-[5.5rem] bg-white object-contain shadow-[0_0_0_1px_rgba(255,255,255,0.9)]"
-                src={footerCertificatePreviewSource}
-              />
-            ) : null}
-            <Input
-              placeholder={labels.imageAlt}
-              value={form.footerCertificateAlt}
-              onChange={(event) => {
-                setForm({ ...form, footerCertificateAlt: event.target.value })
+            <MediaImageField
+              alt={form.footerCertificateAlt}
+              altLabel={labels.imageAlt}
+              file={form.footerCertificateFile}
+              folderPrefix="settings/footer-certificate"
+              imageClassName="h-auto w-[5.5rem] bg-white object-contain shadow-[0_0_0_1px_rgba(255,255,255,0.9)]"
+              labels={defaultMediaImageFieldLabels}
+              url={form.footerCertificateUrl}
+              onAltChange={(value) => {
+                setForm({ ...form, footerCertificateAlt: value })
               }}
-            />
-            <Input
-              accept="image/*"
-              type="file"
-              onChange={(event) => {
+              onClear={() => {
                 setForm({
                   ...form,
-                  footerCertificateFile: event.target.files?.[0] ?? null,
+                  footerCertificateFile: null,
+                  footerCertificateUrl: '',
+                })
+              }}
+              onFileChange={(file) => {
+                setForm({ ...form, footerCertificateFile: file })
+              }}
+              onUrlChange={(url) => {
+                setForm({
+                  ...form,
+                  footerCertificateFile: null,
+                  footerCertificateUrl: url,
                 })
               }}
             />

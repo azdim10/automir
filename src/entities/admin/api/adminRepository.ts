@@ -26,6 +26,7 @@ const SUPPORTED_IMAGE_TYPES = new Set([
 
 interface UploadedAdminImage {
   assetId: string
+  path: string
   publicUrl: string
 }
 
@@ -112,6 +113,7 @@ async function uploadAdminImage({
 
   return {
     assetId,
+    path,
     publicUrl,
   }
 }
@@ -621,7 +623,25 @@ export async function getAdminProducts(): Promise<TableRow<'products'>[]> {
   return data
 }
 
+export interface AdminMediaAsset {
+  alt: string
+  createdAt: string
+  id: string
+  mimeType: string | null
+  path: string
+  publicUrl: string
+  sizeBytes: number | null
+}
+
+export interface AdminProductImageRecord {
+  alt: string
+  assetId: string | null
+  id: string
+  url: string
+}
+
 export interface AdminProductRecord {
+  images: AdminProductImageRecord[]
   modifications: TableRow<'product_modifications'>[]
   product: TableRow<'products'>
   specifications: TableRow<'product_specifications'>[]
@@ -644,6 +664,7 @@ export interface SaveAdminProductInput {
   description: string
   id: string | null
   imageAlt: string
+  imageAssetId: string | null
   imageFile: File | null
   isActive: boolean
   isFeatured: boolean
@@ -742,7 +763,8 @@ export async function getAdminProductsWithDetails(): Promise<
     return []
   }
 
-  const [specificationsResult, modificationsResult] = await Promise.all([
+  const [specificationsResult, modificationsResult, imagesResult] =
+    await Promise.all([
     supabase
       .from('product_specifications')
       .select('*')
@@ -751,6 +773,11 @@ export async function getAdminProductsWithDetails(): Promise<
     supabase
       .from('product_modifications')
       .select('*')
+      .in('product_id', productIds)
+      .order('sort_order', { ascending: true }),
+    supabase
+      .from('product_images')
+      .select('id, product_id, asset_id, url, alt, sort_order')
       .in('product_id', productIds)
       .order('sort_order', { ascending: true }),
   ])
@@ -763,6 +790,10 @@ export async function getAdminProductsWithDetails(): Promise<
     throw normalizeSupabaseError(modificationsResult.error)
   }
 
+  if (imagesResult.error) {
+    throw normalizeSupabaseError(imagesResult.error)
+  }
+
   const specificationsByProductId = new Map<
     string,
     TableRow<'product_specifications'>[]
@@ -771,6 +802,7 @@ export async function getAdminProductsWithDetails(): Promise<
     string,
     TableRow<'product_modifications'>[]
   >()
+  const imagesByProductId = new Map<string, AdminProductImageRecord[]>()
 
   for (const row of specificationsResult.data) {
     const current = specificationsByProductId.get(row.product_id) ?? []
@@ -784,7 +816,19 @@ export async function getAdminProductsWithDetails(): Promise<
     modificationsByProductId.set(row.product_id, current)
   }
 
+  for (const row of imagesResult.data) {
+    const current = imagesByProductId.get(row.product_id) ?? []
+    current.push({
+      alt: row.alt,
+      assetId: row.asset_id,
+      id: row.id,
+      url: row.url,
+    })
+    imagesByProductId.set(row.product_id, current)
+  }
+
   return products.map((product) => ({
+    images: imagesByProductId.get(product.id) ?? [],
     modifications: modificationsByProductId.get(product.id) ?? [],
     product,
     specifications: specificationsByProductId.get(product.id) ?? [],
@@ -834,7 +878,13 @@ export async function saveAdminProductWithDetails(
     sketch_url: sketchUrl || null,
   })
 
-  if (input.imageFile) {
+  if (input.imageAssetId) {
+    await linkAdminProductImageFromAsset({
+      alt: input.imageAlt || input.name,
+      assetId: input.imageAssetId,
+      productId,
+    })
+  } else if (input.imageFile) {
     await uploadAdminProductImage({
       alt: input.imageAlt || input.name,
       file: input.imageFile,
@@ -1006,6 +1056,201 @@ export async function uploadAdminProductImage({
 
   if (imageError) {
     throw normalizeSupabaseError(imageError)
+  }
+}
+
+async function getMediaAssetUsageCount(assetId: string): Promise<number> {
+  const [productImagesResult, categoriesResult] = await Promise.all([
+    supabase
+      .from('product_images')
+      .select('id', { count: 'exact', head: true })
+      .eq('asset_id', assetId),
+    supabase
+      .from('categories')
+      .select('id', { count: 'exact', head: true })
+      .eq('image_asset_id', assetId),
+  ])
+
+  if (productImagesResult.error) {
+    throw normalizeSupabaseError(productImagesResult.error)
+  }
+
+  if (categoriesResult.error) {
+    throw normalizeSupabaseError(categoriesResult.error)
+  }
+
+  return (productImagesResult.count ?? 0) + (categoriesResult.count ?? 0)
+}
+
+async function removeMediaAssetById(assetId: string): Promise<void> {
+  const { data: asset, error: assetError } = await supabase
+    .from('media_assets')
+    .select('id, path')
+    .eq('id', assetId)
+    .maybeSingle()
+
+  if (assetError) {
+    throw normalizeSupabaseError(assetError)
+  }
+
+  if (!asset) {
+    return
+  }
+
+  const { error: storageError } = await supabase.storage
+    .from(PRODUCT_IMAGE_BUCKET)
+    .remove([asset.path])
+
+  if (storageError) {
+    throw new Error(storageError.message)
+  }
+
+  const { error: deleteError } = await supabase
+    .from('media_assets')
+    .delete()
+    .eq('id', assetId)
+
+  if (deleteError) {
+    throw normalizeSupabaseError(deleteError)
+  }
+}
+
+export async function uploadAdminMediaAsset({
+  alt,
+  file,
+  folder,
+}: {
+  alt: string
+  file: File
+  folder: string
+}): Promise<AdminMediaAsset> {
+  const uploaded = await uploadAdminImage({
+    alt,
+    file,
+    folder,
+  })
+
+  return {
+    alt,
+    createdAt: new Date().toISOString(),
+    id: uploaded.assetId,
+    mimeType: resolveImageMimeType(file),
+    path: uploaded.path,
+    publicUrl: uploaded.publicUrl,
+    sizeBytes: file.size,
+  }
+}
+
+export async function getAdminMediaAssets(
+  folderPrefix?: string,
+): Promise<AdminMediaAsset[]> {
+  let query = supabase
+    .from('media_assets')
+    .select('id, alt, path, public_url, mime_type, size_bytes, created_at')
+    .order('created_at', { ascending: false })
+
+  if (folderPrefix) {
+    query = query.like('path', `${folderPrefix}%`)
+  }
+
+  const { data, error } = await query
+
+  if (error) {
+    throw normalizeSupabaseError(error)
+  }
+
+  return data.map((row) => ({
+    alt: row.alt,
+    createdAt: row.created_at,
+    id: row.id,
+    mimeType: row.mime_type,
+    path: row.path,
+    publicUrl: row.public_url,
+    sizeBytes: row.size_bytes,
+  }))
+}
+
+export async function deleteAdminMediaAsset(assetId: string): Promise<void> {
+  const usageCount = await getMediaAssetUsageCount(assetId)
+
+  if (usageCount > 0) {
+    throw new Error(
+      'Нельзя удалить: изображение используется в товарах или категориях',
+    )
+  }
+
+  await removeMediaAssetById(assetId)
+}
+
+export async function linkAdminProductImageFromAsset({
+  alt,
+  assetId,
+  productId,
+}: {
+  alt: string
+  assetId: string
+  productId: string
+}): Promise<void> {
+  const { data: asset, error: assetError } = await supabase
+    .from('media_assets')
+    .select('id, public_url')
+    .eq('id', assetId)
+    .single()
+
+  if (assetError) {
+    throw normalizeSupabaseError(assetError)
+  }
+
+  const { count, error: countError } = await supabase
+    .from('product_images')
+    .select('id', { count: 'exact', head: true })
+    .eq('product_id', productId)
+
+  if (countError) {
+    throw normalizeSupabaseError(countError)
+  }
+
+  const { error: imageError } = await supabase.from('product_images').insert({
+    alt,
+    asset_id: asset.id,
+    product_id: productId,
+    sort_order: count ?? 0,
+    url: asset.public_url,
+  })
+
+  if (imageError) {
+    throw normalizeSupabaseError(imageError)
+  }
+}
+
+export async function deleteAdminProductImage(imageId: string): Promise<void> {
+  const { data: image, error: imageError } = await supabase
+    .from('product_images')
+    .select('id, asset_id')
+    .eq('id', imageId)
+    .single()
+
+  if (imageError) {
+    throw normalizeSupabaseError(imageError)
+  }
+
+  const { error: deleteError } = await supabase
+    .from('product_images')
+    .delete()
+    .eq('id', imageId)
+
+  if (deleteError) {
+    throw normalizeSupabaseError(deleteError)
+  }
+
+  if (!image.asset_id) {
+    return
+  }
+
+  const usageCount = await getMediaAssetUsageCount(image.asset_id)
+
+  if (usageCount === 0) {
+    await removeMediaAssetById(image.asset_id)
   }
 }
 

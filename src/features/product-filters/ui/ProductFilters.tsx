@@ -27,7 +27,7 @@ export function ProductFilters({
   sortOptions,
 }: ProductFiltersProps) {
   return (
-    <div className="grid gap-3 md:grid-cols-2">
+    <div className="grid gap-3 md:grid-cols-2 md:items-end">
       <Select
         value={categorySlug}
         options={[

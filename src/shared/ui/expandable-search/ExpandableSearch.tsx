@@ -89,6 +89,7 @@ export function ExpandableSearch({
           aria-label={ariaLabel}
           id={inputId}
           placeholder={placeholder}
+          type="text"
           value={value}
           onChange={(event) => {
             onChange(event.target.value)
@@ -120,7 +121,7 @@ export function ExpandableSearch({
           id={inputId}
           placeholder={placeholder}
           tabIndex={isOpen ? 0 : -1}
-          type="search"
+          type="text"
           value={value}
           onChange={(event) => {
             onChange(event.target.value)

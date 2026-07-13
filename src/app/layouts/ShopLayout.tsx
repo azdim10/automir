@@ -127,16 +127,18 @@ export function ShopLayout() {
     !callbackLabels
   ) {
     return (
-      <>
+      <div className="flex min-h-screen flex-col">
         <AppHeaderSkeleton />
-        <Outlet />
+        <main className="flex-1">
+          <Outlet />
+        </main>
         <AppFooterSkeleton />
-      </>
+      </div>
     )
   }
 
   return (
-    <>
+    <div className="flex min-h-screen flex-col">
       <AppHeader
         callbackLabels={callbackLabels}
         cartAriaLabel={cartAriaLabel}
@@ -144,12 +146,14 @@ export function ShopLayout() {
         logoAlt={siteProfile.logoAlt}
         logoUrl={siteProfile.logoUrl}
       />
-      <Outlet />
+      <main className="flex-1">
+        <Outlet />
+      </main>
       {footerLabels && footerSettings ? (
         <AppFooter labels={footerLabels} settings={footerSettings} />
       ) : (
         <AppFooterSkeleton />
       )}
-    </>
+    </div>
   )
 }

@@ -26,6 +26,10 @@ export const router = createBrowserRouter(
         },
         {
           path: 'catalog',
+          element: <CatalogPage />,
+        },
+        {
+          path: 'catalog/categories',
           element: <CategoriesPage />,
         },
         {

@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState, type SyntheticEvent } from 'react'
+import { useState, type SyntheticEvent } from 'react'
 
 import {
   parseContentSectionPayload,
@@ -7,6 +7,10 @@ import {
   type AdminInfoPageRecord,
   type SaveAdminInfoPageInput,
 } from '@entities/admin/api/adminRepository'
+import {
+  defaultMediaImageFieldLabels,
+  MediaImageField,
+} from '@features/media-library'
 import {
   MANAGED_INFO_PAGE_SLUGS,
   type ManagedInfoPageSlug,
@@ -205,26 +209,6 @@ function PagesAdminForm({
   const [form, setForm] = useState(initialForm)
   const isContactsPage = form.slug === 'contacts'
   const isHomePage = form.slug === 'home'
-
-  const selectedLogoPreview = useMemo(() => {
-    if (!form.imageFile) {
-      return null
-    }
-
-    return URL.createObjectURL(form.imageFile)
-  }, [form.imageFile])
-
-  useEffect(() => {
-    return () => {
-      if (selectedLogoPreview) {
-        URL.revokeObjectURL(selectedLogoPreview)
-      }
-    }
-  }, [selectedLogoPreview])
-
-  const imagePreviewSource =
-    selectedLogoPreview ??
-    (form.imageUrl.trim().length > 0 ? form.imageUrl : null)
 
   function handleSubmit(event: SyntheticEvent<HTMLFormElement>) {
     event.preventDefault()
@@ -452,27 +436,32 @@ function PagesAdminForm({
           <Typography as="h3" variant="body" weight="semibold">
             {labels.pageImage}
           </Typography>
-          {imagePreviewSource ? (
-            <img
-              alt={form.imageAlt}
-              className="h-40 w-full max-w-xl rounded-lg object-cover object-left"
-              src={imagePreviewSource}
-            />
-          ) : null}
-          <Input
-            placeholder={labels.pageImageAlt}
-            value={form.imageAlt}
-            onChange={(event) => {
-              setForm({ ...form, imageAlt: event.target.value })
+          <MediaImageField
+            alt={form.imageAlt}
+            altLabel={labels.pageImageAlt}
+            file={form.imageFile}
+            folderPrefix={`pages/${form.slug}`}
+            imageClassName="h-40 w-full max-w-xl rounded-lg object-cover object-left"
+            labels={defaultMediaImageFieldLabels}
+            url={form.imageUrl}
+            onAltChange={(value) => {
+              setForm({ ...form, imageAlt: value })
             }}
-          />
-          <Input
-            accept="image/*"
-            type="file"
-            onChange={(event) => {
+            onClear={() => {
               setForm({
                 ...form,
-                imageFile: event.target.files?.[0] ?? null,
+                imageFile: null,
+                imageUrl: '',
+              })
+            }}
+            onFileChange={(file) => {
+              setForm({ ...form, imageFile: file })
+            }}
+            onUrlChange={(url) => {
+              setForm({
+                ...form,
+                imageFile: null,
+                imageUrl: url,
               })
             }}
           />

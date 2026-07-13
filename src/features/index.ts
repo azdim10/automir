@@ -8,3 +8,9 @@ export {
   type CallbackLabels,
 } from './request-callback'
 export { CartQuantityControl, useUpdateCartItem } from './update-cart-item'
+export {
+  MediaImageField,
+  MediaLibraryModal,
+  type MediaImageFieldLabels,
+  type MediaLibraryLabels,
+} from './media-library'

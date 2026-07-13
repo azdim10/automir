@@ -1,9 +1,14 @@
-import { useEffect, useMemo, type SyntheticEvent } from 'react'
+import { type SyntheticEvent } from 'react'
 
 import type {
+  AdminProductImageRecord,
   AdminProductRecord,
   SaveAdminProductInput,
 } from '@entities/admin/api/adminRepository'
+import {
+  defaultMediaImageFieldLabels,
+  MediaImageField,
+} from '@features/media-library'
 import type { TableRow } from '@shared/api/supabase'
 import {
   Button,
@@ -29,8 +34,10 @@ export interface ProductFormState {
   applicationArea: string
   categoryId: string
   description: string
+  existingImages: AdminProductImageRecord[]
   id: string | null
   imageAlt: string
+  imageAssetId: string | null
   imageFile: File | null
   isActive: boolean
   isFeatured: boolean
@@ -84,6 +91,7 @@ interface ProductAdminFormProps {
   errorMessage: string | null
   form: ProductFormState
   labels: ProductAdminLabels
+  onDeleteImage?: (imageId: string) => void
   onSubmit: (event: SyntheticEvent<HTMLFormElement>) => void
   setForm: (form: ProductFormState) => void
 }
@@ -101,8 +109,10 @@ export function createEmptyProductForm(): ProductFormState {
     applicationArea: '',
     categoryId: '',
     description: '',
+    existingImages: [],
     id: null,
     imageAlt: '',
+    imageAssetId: null,
     imageFile: null,
     isActive: true,
     isFeatured: false,
@@ -130,8 +140,10 @@ export function createProductFormFromRecord(
     applicationArea: product.application_area ?? '',
     categoryId: product.category_id,
     description: product.description ?? '',
+    existingImages: record.images,
     id: product.id,
     imageAlt: product.name,
+    imageAssetId: null,
     imageFile: null,
     isActive: product.is_active,
     isFeatured: product.is_featured,
@@ -172,6 +184,7 @@ export function mapProductFormToSaveInput(
     description: form.description,
     id: form.id,
     imageAlt: form.imageAlt,
+    imageAssetId: form.imageAssetId,
     imageFile: form.imageFile,
     isActive: form.isActive,
     isFeatured: form.isFeatured,
@@ -190,51 +203,12 @@ export function mapProductFormToSaveInput(
   }
 }
 
-function ProductImagePreview({
-  alt,
-  file,
-  url,
-}: {
-  alt: string
-  file: File | null
-  url: string
-}) {
-  const preview = useMemo(() => {
-    if (file) {
-      return URL.createObjectURL(file)
-    }
-
-    return url.trim().length > 0 ? url : null
-  }, [file, url])
-
-  useEffect(() => {
-    if (!file || !preview) {
-      return
-    }
-
-    return () => {
-      URL.revokeObjectURL(preview)
-    }
-  }, [file, preview])
-
-  if (!preview) {
-    return null
-  }
-
-  return (
-    <img
-      alt={alt}
-      className="h-40 w-full max-w-xl rounded-lg object-contain object-left"
-      src={preview}
-    />
-  )
-}
-
 export function ProductAdminForm({
   categories,
   errorMessage,
   form,
   labels,
+  onDeleteImage,
   onSubmit,
   setForm,
 }: ProductAdminFormProps) {
@@ -483,47 +457,114 @@ export function ProductAdminForm({
             <Typography as="h3" variant="body" weight="semibold">
               {labels.image}
             </Typography>
-            <Input
-              placeholder={labels.imageAlt}
-              value={form.imageAlt}
-              onChange={(event) => {
-                setForm({ ...form, imageAlt: event.target.value })
+            {form.existingImages.length > 0 ? (
+              <div className="grid gap-3 sm:grid-cols-2">
+                {form.existingImages.map((image) => (
+                  <article
+                    className="grid gap-2 rounded-lg border border-slate-200 p-2"
+                    key={image.id}
+                  >
+                    <img
+                      alt={image.alt}
+                      className="h-32 w-full rounded-md bg-slate-50 object-contain"
+                      src={image.url}
+                    />
+                    <Typography className="truncate text-slate-600" variant="caption">
+                      {image.alt}
+                    </Typography>
+                    {onDeleteImage ? (
+                      <Button
+                        size="sm"
+                        type="button"
+                        variant="outline"
+                        onClick={() => {
+                          onDeleteImage(image.id)
+                        }}
+                      >
+                        {labels.delete}
+                      </Button>
+                    ) : null}
+                  </article>
+                ))}
+              </div>
+            ) : null}
+            <MediaImageField
+              alt={form.imageAlt}
+              altLabel={labels.imageAlt}
+              file={form.imageFile}
+              folderPrefix="products"
+              labels={defaultMediaImageFieldLabels}
+              url=""
+              onAltChange={(value) => {
+                setForm({ ...form, imageAlt: value })
               }}
-            />
-            <Input
-              accept="image/*"
-              type="file"
-              onChange={(event) => {
+              onAssetSelect={(asset) => {
                 setForm({
                   ...form,
-                  imageFile: event.target.files?.[0] ?? null,
+                  imageAlt: form.imageAlt || asset.alt,
+                  imageAssetId: asset.id,
+                  imageFile: null,
                 })
               }}
+              onClear={() => {
+                setForm({
+                  ...form,
+                  imageAssetId: null,
+                  imageFile: null,
+                })
+              }}
+              onFileChange={(file) => {
+                setForm({
+                  ...form,
+                  imageAssetId: null,
+                  imageFile: file,
+                })
+              }}
+              onUrlChange={() => undefined}
             />
           </div>
           <div className="grid gap-3">
             <Typography as="h3" variant="body" weight="semibold">
               {labels.sketch}
             </Typography>
-            <ProductImagePreview
+            <MediaImageField
               alt={form.sketchAlt}
+              altLabel={labels.sketchAlt}
               file={form.sketchFile}
+              folderPrefix="products"
+              imageClassName="h-40 w-full max-w-xl rounded-lg object-contain object-left"
+              labels={defaultMediaImageFieldLabels}
               url={form.sketchUrl}
-            />
-            <Input
-              placeholder={labels.sketchAlt}
-              value={form.sketchAlt}
-              onChange={(event) => {
-                setForm({ ...form, sketchAlt: event.target.value })
+              onAltChange={(value) => {
+                setForm({ ...form, sketchAlt: value })
               }}
-            />
-            <Input
-              accept="image/*"
-              type="file"
-              onChange={(event) => {
+              onAssetSelect={(asset) => {
                 setForm({
                   ...form,
-                  sketchFile: event.target.files?.[0] ?? null,
+                  sketchAlt: form.sketchAlt || asset.alt,
+                  sketchFile: null,
+                  sketchUrl: asset.publicUrl,
+                })
+              }}
+              onClear={() => {
+                setForm({
+                  ...form,
+                  sketchFile: null,
+                  sketchUrl: '',
+                })
+              }}
+              onFileChange={(file) => {
+                setForm({
+                  ...form,
+                  sketchFile: file,
+                  sketchUrl: '',
+                })
+              }}
+              onUrlChange={(url) => {
+                setForm({
+                  ...form,
+                  sketchFile: null,
+                  sketchUrl: url,
                 })
               }}
             />
