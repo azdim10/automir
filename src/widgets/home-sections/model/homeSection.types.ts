@@ -65,7 +65,7 @@ export interface WelcomeSectionPayload {
 
 export interface FeaturedProductsSectionPayload {
   detailsLabel: string
-  limit: number
+  productIds: string[]
   title?: string
 }
 

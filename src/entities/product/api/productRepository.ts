@@ -277,6 +277,33 @@ export async function getProductById(id: string): Promise<Product> {
   return product
 }
 
+export async function getProductsByIds(ids: string[]): Promise<Product[]> {
+  const uniqueIds = [...new Set(ids.filter((id) => id.trim().length > 0))]
+
+  if (uniqueIds.length === 0) {
+    return []
+  }
+
+  const { data, error } = await supabase
+    .from('products')
+    .select('*')
+    .in('id', uniqueIds)
+    .eq('is_active', true)
+
+  if (error) {
+    throw normalizeSupabaseError(error)
+  }
+
+  const products = await hydrateProducts(data)
+  const productsById = new Map(products.map((product) => [product.id, product]))
+
+  return uniqueIds.flatMap((id) => {
+    const product = productsById.get(id)
+
+    return product ? [product] : []
+  })
+}
+
 export async function getFeaturedProducts(limit: number): Promise<Product[]> {
   const result = await getProducts({
     featured: true,

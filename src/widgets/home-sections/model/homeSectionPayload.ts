@@ -309,6 +309,22 @@ export function parseWelcomePayload(payload: Json): WelcomeSectionPayload | null
   return result
 }
 
+function parseStringArray(value: Json | undefined): string[] {
+  if (!Array.isArray(value)) {
+    return []
+  }
+
+  return value.flatMap((item) => {
+    if (typeof item !== 'string') {
+      return []
+    }
+
+    const trimmed = item.trim()
+
+    return trimmed.length > 0 ? [trimmed] : []
+  })
+}
+
 export function parseFeaturedProductsPayload(
   payload: Json,
 ): FeaturedProductsSectionPayload | null {
@@ -317,20 +333,14 @@ export function parseFeaturedProductsPayload(
   }
 
   const detailsLabel = getJsonString(payload, 'detailsLabel')
-  const limitValue = payload.limit
 
   if (!detailsLabel) {
     return null
   }
 
-  const limit =
-    typeof limitValue === 'number' && limitValue > 0
-      ? Math.min(Math.floor(limitValue), 12)
-      : 6
-
   const result: FeaturedProductsSectionPayload = {
     detailsLabel,
-    limit,
+    productIds: parseStringArray(payload.productIds),
   }
   const title = getOptionalString(payload, 'title')
 

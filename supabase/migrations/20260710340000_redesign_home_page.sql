@@ -30,7 +30,7 @@ where p.slug = 'home'
 insert into public.page_sections (page_id, type, sort_order, payload, is_active)
 select p.id, 'featured_products', 1, '{
   "detailsLabel": "Подробнее >>",
-  "limit": 6
+  "productIds": []
 }'::jsonb, true
 from public.pages p
 where p.slug = 'home'

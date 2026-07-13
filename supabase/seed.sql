@@ -40,7 +40,7 @@ values
       "catalogAction": "Кнопка каталога",
       "featuredTitle": "Заголовок блока товаров",
       "featuredDetailsLabel": "Текст ссылки на товар",
-      "featuredLimit": "Количество товаров",
+      "featuredProducts": "Товары на главной",
       "mapTitle": "Схема проезда",
       "mapLatitude": "Широта",
       "mapLongitude": "Долгота",
@@ -228,12 +228,6 @@ values
     }'::jsonb
   ),
   (
-    'home_labels',
-    '{
-      "empty": "Рекомендуемые товары пока не добавлены"
-    }'::jsonb
-  ),
-  (
     'callback_labels',
     '{
       "title": "Заказать звонок",
@@ -395,15 +389,40 @@ where p.slug = 'contacts'
   );
 
 insert into public.page_sections (page_id, type, sort_order, payload, is_active)
-select p.id, 'welcome', 0, '{
-  "title": "ДОБРО ПОЖАЛОВАТЬ НА САЙТ ООО \"КОМПАНИЯ АВТОМИР\"",
-  "descriptionLeft": "Уважаемые посетители! Мы рады приветствовать Вас на сайте ООО «Компания Автомир». Наша компания имеет большой опыт работы на рынке запасных частей. Мы предлагаем гибкую систему скидок и короткие сроки поставки товаров.",
-  "descriptionRight": "Наша цель — долгосрочное и взаимовыгодное сотрудничество с каждым клиентом. Склад в г. Шадринск. Отправка товаров: ПЭК, Деловые линии, GTD, Автотрейдинг, KIT, «Скиф-Карго», 1001 вагон, «Деловые грузы-Курган».",
+select p.id, 'hero', 0, '{
+  "eyebrow": "Интернет-магазин",
+  "title": "Automir",
+  "description": "Качественные товары с быстрой доставкой по всей стране",
   "actions": [
+    { "label": "Каталог", "href": "catalog", "variant": "primary" }
+  ]
+}'::jsonb, true
+from public.pages p
+where p.slug = 'home'
+  and not exists (
+    select 1
+    from public.page_sections ps
+    where ps.page_id = p.id
+      and ps.type = 'hero'
+      and ps.sort_order = 0
+  );
+
+insert into public.page_sections (page_id, type, sort_order, payload, is_active)
+select p.id, 'feature_grid', 1, '{
+  "title": "Почему мы",
+  "description": "Все преимущества магазина управляются из админки",
+  "items": [
     {
-      "label": "перейти в каталог",
-      "href": "/catalog",
-      "variant": "primary"
+      "title": "Быстрая доставка",
+      "description": "Отправляем заказы в день оформления"
+    },
+    {
+      "title": "Гарантия качества",
+      "description": "Только проверенные товары и поставщики"
+    },
+    {
+      "title": "Поддержка 24/7",
+      "description": "Поможем с выбором и оформлением заказа"
     }
   ]
 }'::jsonb, true
@@ -413,22 +432,7 @@ where p.slug = 'home'
     select 1
     from public.page_sections ps
     where ps.page_id = p.id
-      and ps.type = 'welcome'
-      and ps.sort_order = 0
-  );
-
-insert into public.page_sections (page_id, type, sort_order, payload, is_active)
-select p.id, 'featured_products', 1, '{
-  "detailsLabel": "Подробнее >>",
-  "limit": 6
-}'::jsonb, true
-from public.pages p
-where p.slug = 'home'
-  and not exists (
-    select 1
-    from public.page_sections ps
-    where ps.page_id = p.id
-      and ps.type = 'featured_products'
+      and ps.type = 'feature_grid'
       and ps.sort_order = 1
   );
 

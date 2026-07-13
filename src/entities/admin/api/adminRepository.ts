@@ -177,7 +177,7 @@ export interface SaveAdminInfoPageInput {
   descriptionLeft: string
   descriptionRight: string
   featuredDetailsLabel: string
-  featuredLimit: string
+  featuredProductIds: string[]
   featuredSectionId: string | null
   featuredTitle: string
   imageAlt: string
@@ -250,11 +250,27 @@ function parseWelcomeSectionPayload(value: Json | undefined) {
   }
 }
 
+function parseProductIdsArray(value: Json | undefined): string[] {
+  if (!Array.isArray(value)) {
+    return []
+  }
+
+  return value.flatMap((item) => {
+    if (typeof item !== 'string') {
+      return []
+    }
+
+    const trimmed = item.trim()
+
+    return trimmed.length > 0 ? [trimmed] : []
+  })
+}
+
 function parseFeaturedSectionPayload(value: Json | undefined) {
   if (!isJsonRecord(value)) {
     return {
       featuredDetailsLabel: 'Подробнее >>',
-      featuredLimit: '6',
+      featuredProductIds: [] as string[],
       featuredTitle: '',
     }
   }
@@ -262,8 +278,7 @@ function parseFeaturedSectionPayload(value: Json | undefined) {
   return {
     featuredDetailsLabel:
       getJsonString(value, 'detailsLabel') ?? 'Подробнее >>',
-    featuredLimit:
-      typeof value.limit === 'number' ? String(value.limit) : '6',
+    featuredProductIds: parseProductIdsArray(value.productIds),
     featuredTitle: getJsonString(value, 'title') ?? '',
   }
 }
@@ -438,13 +453,9 @@ export async function saveAdminInfoPage(
       ]
     }
 
-    const featuredLimit = Number(input.featuredLimit)
     const featuredPayload: Json = {
       detailsLabel: input.featuredDetailsLabel.trim() || 'Подробнее >>',
-      limit:
-        Number.isFinite(featuredLimit) && featuredLimit > 0
-          ? Math.min(Math.floor(featuredLimit), 12)
-          : 6,
+      productIds: input.featuredProductIds,
     }
 
     if (input.featuredTitle.trim()) {

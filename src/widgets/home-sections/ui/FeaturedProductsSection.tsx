@@ -3,7 +3,7 @@ import { Link } from 'react-router'
 import { useSiteSettings } from '@entities/content'
 import {
   ProductPrice,
-  useFeaturedProducts,
+  useHomeFeaturedProducts,
   type Product,
 } from '@entities/product'
 import type { Json } from '@shared/api/supabase'
@@ -94,7 +94,9 @@ export function FeaturedProductsSection({
   payload,
 }: FeaturedProductsSectionProps) {
   const { data: siteSettings } = useSiteSettings()
-  const { data: products, isLoading } = useFeaturedProducts(payload.limit)
+  const { data: products, isLoading } = useHomeFeaturedProducts(
+    payload.productIds,
+  )
   const labels = parseFeaturedProductsLabels(siteSettings?.home_labels)
   const locale =
     typeof siteSettings?.locale === 'string' ? siteSettings.locale : null
@@ -141,7 +143,14 @@ export function FeaturedProductsSection({
             ))}
           </div>
         ) : null}
-        {!isLoading && (!products || products.length === 0) ? (
+        {!isLoading && payload.productIds.length === 0 ? (
+          <Typography className="text-slate-500" variant="body">
+            {labels.empty}
+          </Typography>
+        ) : null}
+        {!isLoading &&
+        payload.productIds.length > 0 &&
+        (!products || products.length === 0) ? (
           <Typography className="text-slate-500" variant="body">
             {labels.empty}
           </Typography>

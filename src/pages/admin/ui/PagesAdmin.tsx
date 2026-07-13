@@ -11,6 +11,7 @@ import {
   MANAGED_INFO_PAGE_SLUGS,
   type ManagedInfoPageSlug,
 } from '@entities/content/model/managedPages'
+import type { TableRow } from '@shared/api/supabase'
 import {
   Button,
   Card,
@@ -20,6 +21,8 @@ import {
   Typography,
 } from '@shared/ui'
 
+const MAX_HOME_FEATURED_PRODUCTS = 12
+
 interface PagesAdminLabels {
   aboutPage: string
   catalogAction: string
@@ -28,7 +31,7 @@ interface PagesAdminLabels {
   descriptionLeft: string
   descriptionRight: string
   featuredDetailsLabel: string
-  featuredLimit: string
+  featuredProducts: string
   featuredTitle: string
   homePage: string
   mapLatitude: string
@@ -51,7 +54,7 @@ export interface InfoPageFormState {
   descriptionLeft: string
   descriptionRight: string
   featuredDetailsLabel: string
-  featuredLimit: string
+  featuredProductIds: string[]
   featuredSectionId: string | null
   featuredTitle: string
   imageAlt: string
@@ -74,6 +77,7 @@ interface PagesAdminProps {
   infoPages: AdminInfoPageRecord[]
   labels: PagesAdminLabels
   onSave: (input: SaveAdminInfoPageInput) => void
+  products: TableRow<'products'>[]
 }
 
 const PAGE_LABEL_KEYS: Record<
@@ -100,7 +104,7 @@ function createEmptyInfoPageForm(slug: ManagedInfoPageSlug): InfoPageFormState {
     descriptionLeft: '',
     descriptionRight: '',
     featuredDetailsLabel: 'Подробнее >>',
-    featuredLimit: '6',
+    featuredProductIds: [],
     featuredSectionId: null,
     featuredTitle: '',
     imageAlt: '',
@@ -138,7 +142,7 @@ function createInfoPageForm(
       descriptionLeft: welcomePayload.descriptionLeft,
       descriptionRight: welcomePayload.descriptionRight,
       featuredDetailsLabel: featuredPayload.featuredDetailsLabel,
-      featuredLimit: featuredPayload.featuredLimit,
+      featuredProductIds: featuredPayload.featuredProductIds,
       featuredSectionId: record.secondarySection?.id ?? null,
       featuredTitle: featuredPayload.featuredTitle,
       imageAlt: '',
@@ -164,7 +168,7 @@ function createInfoPageForm(
     descriptionLeft: '',
     descriptionRight: '',
     featuredDetailsLabel: 'Подробнее >>',
-    featuredLimit: '6',
+    featuredProductIds: [],
     featuredSectionId: null,
     featuredTitle: '',
     imageAlt: sectionPayload.imageAlt,
@@ -188,6 +192,7 @@ interface PagesAdminFormProps {
   initialForm: InfoPageFormState
   labels: PagesAdminLabels
   onSave: (input: SaveAdminInfoPageInput) => void
+  products: TableRow<'products'>[]
 }
 
 function PagesAdminForm({
@@ -195,6 +200,7 @@ function PagesAdminForm({
   initialForm,
   labels,
   onSave,
+  products,
 }: PagesAdminFormProps) {
   const [form, setForm] = useState(initialForm)
   const isContactsPage = form.slug === 'contacts'
@@ -228,7 +234,7 @@ function PagesAdminForm({
       descriptionLeft: form.descriptionLeft,
       descriptionRight: form.descriptionRight,
       featuredDetailsLabel: form.featuredDetailsLabel,
-      featuredLimit: form.featuredLimit,
+      featuredProductIds: form.featuredProductIds,
       featuredSectionId: form.featuredSectionId,
       featuredTitle: form.featuredTitle,
       imageAlt: form.imageAlt,
@@ -322,14 +328,70 @@ function PagesAdminForm({
                 setForm({ ...form, featuredDetailsLabel: event.target.value })
               }}
             />
-            <Input
-              placeholder={labels.featuredLimit}
-              type="number"
-              value={form.featuredLimit}
-              onChange={(event) => {
-                setForm({ ...form, featuredLimit: event.target.value })
-              }}
-            />
+            <div className="grid gap-2">
+              <Typography as="h4" variant="body-sm" weight="semibold">
+                {labels.featuredProducts}
+              </Typography>
+              <div className="max-h-64 space-y-2 overflow-y-auto rounded-md border border-slate-200 p-3">
+                {products.length === 0 ? (
+                  <Typography className="text-slate-500" variant="body-sm">
+                    {labels.featuredProducts}
+                  </Typography>
+                ) : (
+                  products.map((product) => {
+                    const isChecked = form.featuredProductIds.includes(
+                      product.id,
+                    )
+
+                    return (
+                      <label
+                        className="flex cursor-pointer items-start gap-3 rounded-md px-2 py-1 hover:bg-slate-50"
+                        key={product.id}
+                      >
+                        <input
+                          checked={isChecked}
+                          className="mt-1"
+                          type="checkbox"
+                          onChange={() => {
+                            if (isChecked) {
+                              setForm({
+                                ...form,
+                                featuredProductIds:
+                                  form.featuredProductIds.filter(
+                                    (id) => id !== product.id,
+                                  ),
+                              })
+                              return
+                            }
+
+                            if (
+                              form.featuredProductIds.length >=
+                              MAX_HOME_FEATURED_PRODUCTS
+                            ) {
+                              return
+                            }
+
+                            setForm({
+                              ...form,
+                              featuredProductIds: [
+                                ...form.featuredProductIds,
+                                product.id,
+                              ],
+                            })
+                          }}
+                        />
+                        <span className="text-sm text-slate-700">
+                          {product.name}
+                          <span className="block text-slate-500">
+                            {product.sku}
+                          </span>
+                        </span>
+                      </label>
+                    )
+                  })
+                )}
+              </div>
+            </div>
           </div>
         </>
       ) : (
@@ -431,6 +493,7 @@ export function PagesAdmin({
   infoPages,
   labels,
   onSave,
+  products,
 }: PagesAdminProps) {
   const [selectedSlug, setSelectedSlug] =
     useState<ManagedInfoPageSlug>('home')
@@ -463,6 +526,7 @@ export function PagesAdmin({
           errorMessage={errorMessage}
           initialForm={initialForm}
           labels={labels}
+          products={products}
           onSave={onSave}
         />
       </CardContent>

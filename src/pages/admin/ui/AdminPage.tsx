@@ -88,7 +88,7 @@ interface AdminLabels {
   footerEmails: string
   footerPhones: string
   featuredDetailsLabel: string
-  featuredLimit: string
+  featuredProducts: string
   featuredTitle: string
   image: string
   homePage: string
@@ -211,7 +211,7 @@ function parseAdminLabels(value: Json | undefined): AdminLabels | null {
     'footerEmails',
     'footerPhones',
     'featuredDetailsLabel',
-    'featuredLimit',
+    'featuredProducts',
     'featuredTitle',
     'homePage',
     'image',
@@ -593,6 +593,9 @@ export function AdminPage() {
       void queryClient.invalidateQueries({
         queryKey: contentQueryKeys.all,
       })
+      void queryClient.invalidateQueries({
+        queryKey: productQueryKeys.all,
+      })
     },
   })
 
@@ -762,6 +765,7 @@ export function AdminPage() {
               errorMessage={getMutationErrorMessage(saveInfoPageMutation.error)}
               infoPages={infoPages}
               labels={labels}
+              products={products.map((record) => record.product)}
               onSave={(input) => {
                 saveInfoPageMutation.mutate(input)
               }}

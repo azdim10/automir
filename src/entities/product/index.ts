@@ -3,9 +3,11 @@ export {
   getProductById,
   getProductBySlug,
   getProducts,
+  getProductsByIds,
 } from './api/productRepository'
 export { productQueryKeys } from './model/product.queryKeys'
 export { useFeaturedProducts } from './model/useFeaturedProducts'
+export { useHomeFeaturedProducts } from './model/useHomeFeaturedProducts'
 export { useProduct } from './model/useProduct'
 export { useProducts } from './model/useProducts'
 export { ProductCard } from './ui/ProductCard'
