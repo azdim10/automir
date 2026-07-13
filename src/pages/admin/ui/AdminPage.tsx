@@ -17,6 +17,7 @@ import {
   updateAdminCategory,
   updateAdminOrderStatus,
   uploadAdminFooterBackground,
+  uploadAdminFooterCertificate,
   uploadAdminSiteLogo,
   upsertAdminSiteSetting,
 } from '@entities/admin'
@@ -83,6 +84,7 @@ interface AdminLabels {
   footer: string
   footerAddress: string
   footerBackground: string
+  footerCertificate: string
   footerCompanyName: string
   footerCopyright: string
   footerEmails: string
@@ -160,6 +162,9 @@ interface SiteSettingsFormState {
   footerBackgroundAlt: string
   footerBackgroundFile: File | null
   footerBackgroundUrl: string
+  footerCertificateAlt: string
+  footerCertificateFile: File | null
+  footerCertificateUrl: string
   footerCompanyName: string
   footerCopyright: string
   footerEmails: string
@@ -206,6 +211,7 @@ function parseAdminLabels(value: Json | undefined): AdminLabels | null {
     'footer',
     'footerAddress',
     'footerBackground',
+    'footerCertificate',
     'footerCompanyName',
     'footerCopyright',
     'footerEmails',
@@ -350,6 +356,13 @@ function createSettingsForm(
     footerBackgroundFile: null,
     footerBackgroundUrl: footerSettings
       ? (getJsonString(footerSettings, 'backgroundUrl') ?? '')
+      : '',
+    footerCertificateAlt: footerSettings
+      ? (getJsonString(footerSettings, 'certificateAlt') ?? 'Сертификат')
+      : 'Сертификат',
+    footerCertificateFile: null,
+    footerCertificateUrl: footerSettings
+      ? (getJsonString(footerSettings, 'certificateUrl') ?? '')
       : '',
     footerCompanyName: footerSettings
       ? (getJsonString(footerSettings, 'companyName') ?? '')
@@ -522,6 +535,7 @@ export function AdminPage() {
     mutationFn: async (form: SiteSettingsFormState) => {
       let logoUrl = form.logoUrl.trim()
       let footerBackgroundUrl = form.footerBackgroundUrl.trim()
+      let footerCertificateUrl = form.footerCertificateUrl.trim()
 
       if (form.logoFile) {
         logoUrl = await uploadAdminSiteLogo({
@@ -534,6 +548,13 @@ export function AdminPage() {
         footerBackgroundUrl = await uploadAdminFooterBackground({
           alt: form.footerBackgroundAlt || 'Footer background',
           file: form.footerBackgroundFile,
+        })
+      }
+
+      if (form.footerCertificateFile) {
+        footerCertificateUrl = await uploadAdminFooterCertificate({
+          alt: form.footerCertificateAlt || 'Certificate',
+          file: form.footerCertificateFile,
         })
       }
 
@@ -561,6 +582,8 @@ export function AdminPage() {
           address: form.footerAddress,
           backgroundAlt: form.footerBackgroundAlt,
           backgroundUrl: footerBackgroundUrl,
+          certificateAlt: form.footerCertificateAlt,
+          certificateUrl: footerCertificateUrl,
           companyName: form.footerCompanyName,
           copyright: form.footerCopyright,
           emails: splitMultilineValues(form.footerEmails),
@@ -568,13 +591,15 @@ export function AdminPage() {
         }),
       ])
 
-      return { footerBackgroundUrl, logoUrl }
+      return { footerBackgroundUrl, footerCertificateUrl, logoUrl }
     },
     onSuccess: (result) => {
       setSettingsForm((current) => ({
         ...current,
         footerBackgroundFile: null,
         footerBackgroundUrl: result.footerBackgroundUrl,
+        footerCertificateFile: null,
+        footerCertificateUrl: result.footerCertificateUrl,
         logoFile: null,
         logoUrl: result.logoUrl,
       }))
@@ -956,6 +981,28 @@ function SettingsAdmin({
       ? form.footerBackgroundUrl
       : null)
 
+  const footerCertificatePreview = useMemo(() => {
+    if (!form.footerCertificateFile) {
+      return null
+    }
+
+    return URL.createObjectURL(form.footerCertificateFile)
+  }, [form.footerCertificateFile])
+
+  useEffect(() => {
+    return () => {
+      if (footerCertificatePreview) {
+        URL.revokeObjectURL(footerCertificatePreview)
+      }
+    }
+  }, [footerCertificatePreview])
+
+  const footerCertificatePreviewSource =
+    footerCertificatePreview ??
+    (form.footerCertificateUrl.trim().length > 0
+      ? form.footerCertificateUrl
+      : null)
+
   return (
     <Card>
       <CardContent>
@@ -1126,6 +1173,33 @@ function SettingsAdmin({
                 setForm({
                   ...form,
                   footerBackgroundFile: event.target.files?.[0] ?? null,
+                })
+              }}
+            />
+            <Typography as="h3" variant="body" weight="semibold">
+              {labels.footerCertificate}
+            </Typography>
+            {footerCertificatePreviewSource ? (
+              <img
+                alt={form.footerCertificateAlt}
+                className="h-56 w-auto max-w-[12rem] rounded-md border border-slate-200 bg-white object-contain shadow-sm"
+                src={footerCertificatePreviewSource}
+              />
+            ) : null}
+            <Input
+              placeholder={labels.imageAlt}
+              value={form.footerCertificateAlt}
+              onChange={(event) => {
+                setForm({ ...form, footerCertificateAlt: event.target.value })
+              }}
+            />
+            <Input
+              accept="image/*"
+              type="file"
+              onChange={(event) => {
+                setForm({
+                  ...form,
+                  footerCertificateFile: event.target.files?.[0] ?? null,
                 })
               }}
             />

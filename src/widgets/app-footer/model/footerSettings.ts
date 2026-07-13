@@ -3,6 +3,7 @@ import { getJsonString, isJsonRecord } from '@shared/lib/json'
 
 export interface FooterLabels {
   address: string
+  certificate: string
   email: string
   phoneFax: string
 }
@@ -11,6 +12,8 @@ export interface FooterSettings {
   address: string
   backgroundAlt: string
   backgroundUrl: string | null
+  certificateAlt: string
+  certificateUrl: string | null
   companyName: string
   copyright: string
   emails: string[]
@@ -38,7 +41,12 @@ export function parseFooterLabels(value: Json | undefined): FooterLabels | null 
     return null
   }
 
-  const keys: (keyof FooterLabels)[] = ['address', 'email', 'phoneFax']
+  const keys: (keyof FooterLabels)[] = [
+    'address',
+    'certificate',
+    'email',
+    'phoneFax',
+  ]
   const labels: Partial<FooterLabels> = {}
 
   for (const key of keys) {
@@ -70,6 +78,8 @@ export function parseFooterSettings(value: Json | undefined): FooterSettings | n
     address: getJsonString(value, 'address') ?? '',
     backgroundAlt: getJsonString(value, 'backgroundAlt') ?? 'Фон футера',
     backgroundUrl: getJsonString(value, 'backgroundUrl'),
+    certificateAlt: getJsonString(value, 'certificateAlt') ?? 'Сертификат',
+    certificateUrl: getJsonString(value, 'certificateUrl'),
     companyName,
     copyright,
     emails: parseStringArray(value.emails),

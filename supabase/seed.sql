@@ -85,7 +85,9 @@ values
       "footerAddress": "Адрес в футере",
       "footerEmails": "Email (по одному в строке)",
       "footerPhones": "Телефоны (по одному в строке)",
-      "footerBackground": "Фон футера"
+      "footerBackground": "Фон футера",
+      "footerCertificate": "Сертификат",
+      "footerCertificateAlt": "Описание сертификата"
     }'::jsonb
   ),
   (
@@ -205,6 +207,7 @@ values
     'footer_labels',
     '{
       "address": "Адрес:",
+      "certificate": "Сертификат",
       "email": "E-mail:",
       "phoneFax": "тел/факс:"
     }'::jsonb
@@ -224,7 +227,9 @@ values
         "8-912-833-22-90"
       ],
       "backgroundUrl": "",
-      "backgroundAlt": "Фон футера"
+      "backgroundAlt": "Фон футера",
+      "certificateUrl": "",
+      "certificateAlt": "Сертификат"
     }'::jsonb
   ),
   (

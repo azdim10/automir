@@ -36,7 +36,7 @@ export function AppFooter({ labels, settings }: AppFooterProps) {
       style={backgroundStyle}
     >
       <Container>
-        <div className="grid gap-6 px-2 py-8 md:grid-cols-2 md:gap-10">
+        <div className="grid gap-8 px-2 py-8 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.2fr)_auto] lg:items-start lg:gap-10">
           <div className="grid gap-2">
             <Typography className="text-slate-900" variant="body-sm">
               {settings.copyright}
@@ -82,6 +82,29 @@ export function AppFooter({ labels, settings }: AppFooterProps) {
               </FooterContactLine>
             ) : null}
           </div>
+          {settings.certificateUrl ? (
+            <div className="grid justify-items-center gap-2 lg:justify-items-end">
+              <Typography
+                as="h2"
+                className="text-slate-900"
+                variant="body-sm"
+                weight="semibold"
+              >
+                {labels.certificate}
+              </Typography>
+              <a
+                href={settings.certificateUrl}
+                rel="noreferrer"
+                target="_blank"
+              >
+                <img
+                  alt={settings.certificateAlt}
+                  className="h-56 w-auto max-w-[12rem] rounded-md border border-slate-200 bg-white object-contain shadow-sm lg:h-72 lg:max-w-[14rem]"
+                  src={settings.certificateUrl}
+                />
+              </a>
+            </div>
+          ) : null}
         </div>
       </Container>
     </footer>
@@ -92,9 +115,10 @@ export function AppFooterSkeleton() {
   return (
     <footer className="border-t border-slate-200 bg-sky-50">
       <Container>
-        <div className="grid gap-4 py-8 md:grid-cols-2">
+        <div className="grid gap-4 py-8 lg:grid-cols-3">
           <div className="h-12 animate-pulse rounded bg-slate-200" />
           <div className="h-20 animate-pulse rounded bg-slate-200" />
+          <div className="h-40 animate-pulse rounded bg-slate-200" />
         </div>
       </Container>
     </footer>

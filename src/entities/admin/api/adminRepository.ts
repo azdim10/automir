@@ -166,6 +166,22 @@ export async function uploadAdminFooterBackground({
   return image.publicUrl
 }
 
+export async function uploadAdminFooterCertificate({
+  alt,
+  file,
+}: {
+  alt: string
+  file: File
+}): Promise<string> {
+  const image = await uploadAdminImage({
+    alt,
+    file,
+    folder: 'settings/footer-certificate',
+  })
+
+  return image.publicUrl
+}
+
 export interface AdminInfoPageRecord {
   page: TableRow<'pages'>
   secondarySection: TableRow<'page_sections'> | null
