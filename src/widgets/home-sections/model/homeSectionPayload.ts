@@ -11,6 +11,7 @@ import type {
   HomeSectionActionVariant,
   HomeSectionImage,
   ImageTextSectionPayload,
+  YandexMapPayload,
 } from './homeSection.types'
 
 function getOptionalString(
@@ -266,5 +267,38 @@ export function parseContentPayload(payload: Json): ContentSectionPayload | null
     result.image = image
   }
 
+  const map = parseYandexMapPayload(payload.map)
+
+  if (map) {
+    result.map = map
+  }
+
   return result
+}
+
+function parseYandexMapPayload(value: Json | undefined): YandexMapPayload | null {
+  if (!isJsonRecord(value)) {
+    return null
+  }
+
+  const title = getJsonString(value, 'title')
+  const latitude = value.latitude
+  const longitude = value.longitude
+  const zoom = value.zoom
+
+  if (
+    !title ||
+    typeof latitude !== 'number' ||
+    typeof longitude !== 'number' ||
+    typeof zoom !== 'number'
+  ) {
+    return null
+  }
+
+  return {
+    title,
+    latitude,
+    longitude,
+    zoom,
+  }
 }

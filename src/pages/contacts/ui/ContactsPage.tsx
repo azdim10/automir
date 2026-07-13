@@ -1,7 +1,16 @@
-import { useSiteSettings } from '@entities/content'
+import { usePageContent, useSiteSettings } from '@entities/content'
 import type { Json } from '@shared/api/supabase'
 import { getJsonString, isJsonRecord } from '@shared/lib/json'
-import { Card, CardContent, Container, EmptyState, Skeleton, Typography } from '@shared/ui'
+import {
+  Card,
+  CardContent,
+  Container,
+  EmptyState,
+  Skeleton,
+  Typography,
+  YandexMapEmbed,
+} from '@shared/ui'
+import { parseContentPayload } from '@widgets/home-sections/model/homeSectionPayload'
 
 interface ContactsLabels {
   address: string
@@ -60,8 +69,8 @@ function ContactsPageSkeleton() {
       <Container size="md">
         <Skeleton className="h-10 w-full max-w-sm" />
         <div className="mt-8 grid gap-4">
-          <Skeleton className="h-24" />
-          <Skeleton className="h-24" />
+          <Skeleton className="h-32" />
+          <Skeleton className="h-64" />
           <Skeleton className="h-24" />
         </div>
       </Container>
@@ -71,6 +80,7 @@ function ContactsPageSkeleton() {
 
 export function ContactsPage() {
   const { data: siteSettings } = useSiteSettings()
+  const { data: pageContent, isLoading } = usePageContent('contacts')
   const labels = parseContactsLabels(siteSettings?.contacts_labels)
   const siteProfile = isJsonRecord(siteSettings?.site_profile)
     ? siteSettings.site_profile
@@ -79,9 +89,20 @@ export function ContactsPage() {
     ? siteSettings.social_links
     : undefined
 
-  if (!labels) {
+  if (!labels || isLoading) {
     return <ContactsPageSkeleton />
   }
+
+  const contentSection = pageContent?.sections.find(
+    (section) => section.type === 'content',
+  )
+  const contentPayload = contentSection
+    ? parseContentPayload(contentSection.payload)
+    : null
+
+  const pageTitle = contentPayload?.title ?? labels.title
+  const pageDescription = contentPayload?.description ?? ''
+  const map = contentPayload?.map ?? null
 
   const contactFields: ContactField[] = [
     {
@@ -128,15 +149,42 @@ export function ContactsPage() {
     },
   ].filter((field) => field.value.length > 0)
 
+  const hasContactInfo =
+    contactFields.length > 0 || socialFields.length > 0
+
   return (
     <main className="py-10">
       <Container size="md">
         <Typography as="h1" variant="h1" weight="bold">
-          {labels.title}
+          {pageTitle}
         </Typography>
 
-        <div className="mt-8 grid gap-4">
-          {contactFields.length === 0 && socialFields.length === 0 ? (
+        {pageDescription ? (
+          <Typography className="mt-6 whitespace-pre-line text-slate-600" variant="body">
+            {pageDescription}
+          </Typography>
+        ) : null}
+
+        {map ? (
+          <section className="mt-10 grid gap-4">
+            <Typography
+              as="h2"
+              className="text-lg font-bold uppercase tracking-wide text-sky-800"
+              variant="h3"
+            >
+              {map.title}
+            </Typography>
+            <YandexMapEmbed
+              latitude={map.latitude}
+              longitude={map.longitude}
+              title={map.title}
+              zoom={map.zoom}
+            />
+          </section>
+        ) : null}
+
+        <div className="mt-10 grid gap-4">
+          {!hasContactInfo && !pageDescription && !map ? (
             <EmptyState title={labels.empty} />
           ) : null}
 

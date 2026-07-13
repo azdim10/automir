@@ -53,6 +53,14 @@ export interface ContentSectionPayload {
   title: string
   description?: string
   image?: HomeSectionImage
+  map?: YandexMapPayload
+}
+
+export interface YandexMapPayload {
+  title: string
+  latitude: number
+  longitude: number
+  zoom: number
 }
 
 export type HomeSectionPayload =

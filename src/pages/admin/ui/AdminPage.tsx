@@ -67,6 +67,7 @@ interface AdminLabels {
   callbacks: string
   category: string
   categories: string
+  contactsPage: string
   delete: string
   deliveryPage: string
   description: string
@@ -78,6 +79,10 @@ interface AdminLabels {
   logo: string
   logoAlt: string
   logout: string
+  mapLatitude: string
+  mapLongitude: string
+  mapTitle: string
+  mapZoom: string
   max: string
   modificationApplicability: string
   modificationDesignation: string
@@ -163,6 +168,7 @@ function parseAdminLabels(value: Json | undefined): AdminLabels | null {
     'callbacks',
     'category',
     'categories',
+    'contactsPage',
     'delete',
     'deliveryPage',
     'description',
@@ -174,6 +180,10 @@ function parseAdminLabels(value: Json | undefined): AdminLabels | null {
     'logo',
     'logoAlt',
     'logout',
+    'mapLatitude',
+    'mapLongitude',
+    'mapTitle',
+    'mapZoom',
     'max',
     'modificationApplicability',
     'modificationDesignation',

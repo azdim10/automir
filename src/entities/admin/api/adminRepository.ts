@@ -159,6 +159,10 @@ export interface SaveAdminInfoPageInput {
   imageAlt: string
   imageFile: File | null
   imageUrl: string
+  mapLatitude: string
+  mapLongitude: string
+  mapTitle: string
+  mapZoom: string
   metaDescription: string
   metaTitle: string
   sectionId: string | null
@@ -172,16 +176,27 @@ function parseContentSectionPayload(value: Json | undefined) {
     return {
       imageAlt: '',
       imageUrl: '',
+      mapLatitude: '',
+      mapLongitude: '',
+      mapTitle: '',
+      mapZoom: '16',
       sectionText: '',
       title: '',
     }
   }
 
   const image = isJsonRecord(value.image) ? value.image : undefined
+  const map = isJsonRecord(value.map) ? value.map : undefined
 
   return {
     imageAlt: image ? (getJsonString(image, 'alt') ?? '') : '',
     imageUrl: image ? (getJsonString(image, 'url') ?? '') : '',
+    mapLatitude:
+      typeof map?.latitude === 'number' ? String(map.latitude) : '',
+    mapLongitude:
+      typeof map?.longitude === 'number' ? String(map.longitude) : '',
+    mapTitle: map ? (getJsonString(map, 'title') ?? '') : '',
+    mapZoom: typeof map?.zoom === 'number' ? String(map.zoom) : '16',
     sectionText: getJsonString(value, 'description') ?? '',
     title: getJsonString(value, 'title') ?? '',
   }
@@ -271,6 +286,25 @@ export async function saveAdminInfoPage(
     payload.image = {
       alt: imageAlt,
       url: imageUrl,
+    }
+  }
+
+  const mapLatitude = Number(input.mapLatitude)
+  const mapLongitude = Number(input.mapLongitude)
+  const mapZoom = Number(input.mapZoom)
+
+  if (
+    input.mapTitle.trim() &&
+    Number.isFinite(mapLatitude) &&
+    Number.isFinite(mapLongitude) &&
+    Number.isFinite(mapZoom) &&
+    mapZoom > 0
+  ) {
+    payload.map = {
+      latitude: mapLatitude,
+      longitude: mapLongitude,
+      title: input.mapTitle.trim(),
+      zoom: mapZoom,
     }
   }
 
