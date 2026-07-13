@@ -2,11 +2,13 @@ import type { PageSection } from '@entities/content'
 
 import {
   parseBannerPayload,
+  parseContentPayload,
   parseFeatureGridPayload,
   parseHeroPayload,
   parseImageTextPayload,
 } from '../model/homeSectionPayload'
 import { BannerSection } from './BannerSection'
+import { ContentSection } from './ContentSection'
 import { FeatureGridSection } from './FeatureGridSection'
 import { HeroSection } from './HeroSection'
 import { ImageTextSection } from './ImageTextSection'
@@ -34,6 +36,11 @@ export function HomeSectionRenderer({ section }: HomeSectionRendererProps) {
   if (section.type === 'feature_grid') {
     const payload = parseFeatureGridPayload(section.payload)
     return payload ? <FeatureGridSection payload={payload} /> : null
+  }
+
+  if (section.type === 'content') {
+    const payload = parseContentPayload(section.payload)
+    return payload ? <ContentSection payload={payload} /> : null
   }
 
   return null

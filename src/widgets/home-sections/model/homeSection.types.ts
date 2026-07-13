@@ -49,11 +49,18 @@ export interface FeatureGridSectionPayload {
   items: FeatureGridItem[]
 }
 
+export interface ContentSectionPayload {
+  title: string
+  description?: string
+  image?: HomeSectionImage
+}
+
 export type HomeSectionPayload =
   | HeroSectionPayload
   | BannerSectionPayload
   | ImageTextSectionPayload
   | FeatureGridSectionPayload
+  | ContentSectionPayload
 
 export interface HomePageSection {
   id: string

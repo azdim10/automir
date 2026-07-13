@@ -49,6 +49,9 @@ function parseHeaderLabels(value: Json | undefined): HeaderLabels | null {
   const keys: (keyof HeaderLabels)[] = [
     'home',
     'catalog',
+    'delivery',
+    'warranty',
+    'about',
     'contacts',
     'news',
     'requestCall',

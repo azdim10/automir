@@ -3,6 +3,7 @@ import { getJsonString, isJsonRecord } from '@shared/lib/json'
 import type { Json } from '@shared/api/supabase'
 import type {
   BannerSectionPayload,
+  ContentSectionPayload,
   FeatureGridItem,
   FeatureGridSectionPayload,
   HeroSectionPayload,
@@ -237,6 +238,32 @@ export function parseFeatureGridPayload(
 
   if (description) {
     result.description = description
+  }
+
+  return result
+}
+
+export function parseContentPayload(payload: Json): ContentSectionPayload | null {
+  if (!isJsonRecord(payload)) {
+    return null
+  }
+
+  const title = getJsonString(payload, 'title')
+
+  if (!title) {
+    return null
+  }
+
+  const result: ContentSectionPayload = { title }
+  const description = getOptionalString(payload, 'description')
+  const image = parseImage(payload.image)
+
+  if (description) {
+    result.description = description
+  }
+
+  if (image) {
+    result.image = image
   }
 
   return result

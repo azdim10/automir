@@ -1,5 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { useState, type SyntheticEvent } from 'react'
+import { useEffect, useMemo, useState, type SyntheticEvent } from 'react'
 
 import {
   adminQueryKeys,
@@ -9,8 +9,10 @@ import {
   deleteAdminProduct,
   getAdminCallbackRequests,
   getAdminCategories,
+  getAdminInfoPages,
   getAdminOrders,
   getAdminProducts,
+  saveAdminInfoPage,
   updateAdminCallbackRequestStatus,
   updateAdminCategory,
   updateAdminOrderStatus,
@@ -38,9 +40,18 @@ import {
   Typography,
 } from '@shared/ui'
 
-type AdminTab = 'products' | 'categories' | 'orders' | 'callbacks' | 'settings'
+import { PagesAdmin } from './PagesAdmin'
+
+type AdminTab =
+  | 'products'
+  | 'categories'
+  | 'orders'
+  | 'callbacks'
+  | 'pages'
+  | 'settings'
 
 interface AdminLabels {
+  aboutPage: string
   active: string
   addCategory: string
   addProduct: string
@@ -49,6 +60,7 @@ interface AdminLabels {
   category: string
   categories: string
   delete: string
+  deliveryPage: string
   email: string
   image: string
   imageAlt: string
@@ -60,10 +72,17 @@ interface AdminLabels {
   max: string
   name: string
   orders: string
+  pageImage: string
+  pageImageAlt: string
+  pageMetaDescription: string
+  pageMetaTitle: string
+  pages: string
+  pageTitle: string
   password: string
   price: string
   products: string
   save: string
+  sectionText: string
   seoDescription: string
   seoKeywords: string
   seoTitle: string
@@ -78,6 +97,7 @@ interface AdminLabels {
   storePhone: string
   telegram: string
   vk: string
+  warrantyPage: string
   whatsapp: string
 }
 
@@ -126,6 +146,7 @@ function parseAdminLabels(value: Json | undefined): AdminLabels | null {
 
   const labels: Partial<AdminLabels> = {}
   const keys: (keyof AdminLabels)[] = [
+    'aboutPage',
     'active',
     'addCategory',
     'addProduct',
@@ -134,6 +155,7 @@ function parseAdminLabels(value: Json | undefined): AdminLabels | null {
     'category',
     'categories',
     'delete',
+    'deliveryPage',
     'email',
     'image',
     'imageAlt',
@@ -145,10 +167,17 @@ function parseAdminLabels(value: Json | undefined): AdminLabels | null {
     'max',
     'name',
     'orders',
+    'pageImage',
+    'pageImageAlt',
+    'pageMetaDescription',
+    'pageMetaTitle',
+    'pages',
+    'pageTitle',
     'password',
     'price',
     'products',
     'save',
+    'sectionText',
     'seoDescription',
     'seoKeywords',
     'seoTitle',
@@ -163,6 +192,7 @@ function parseAdminLabels(value: Json | undefined): AdminLabels | null {
     'storePhone',
     'telegram',
     'vk',
+    'warrantyPage',
     'whatsapp',
   ]
 
@@ -299,6 +329,11 @@ export function AdminPage() {
     queryFn: getAdminCallbackRequests,
     enabled: isAuthenticated,
   })
+  const infoPagesQuery = useQuery({
+    queryKey: adminQueryKeys.infoPages(),
+    queryFn: getAdminInfoPages,
+    enabled: isAuthenticated,
+  })
 
   const signInMutation = useMutation({
     mutationFn: () => signInWithEmail(email, password),
@@ -423,12 +458,21 @@ export function AdminPage() {
   })
   const saveSettingsMutation = useMutation({
     mutationFn: async (form: SiteSettingsFormState) => {
+      let logoUrl = form.logoUrl.trim()
+
+      if (form.logoFile) {
+        logoUrl = await uploadAdminSiteLogo({
+          alt: form.logoAlt || form.storeName || 'Logo',
+          file: form.logoFile,
+        })
+      }
+
       await Promise.all([
         upsertAdminSiteSetting('site_profile', {
           address: form.address,
           email: form.email,
           logoAlt: form.logoAlt,
-          logoUrl: form.logoUrl,
+          logoUrl,
           phone: form.phone,
           storeName: form.storeName,
         }),
@@ -445,30 +489,26 @@ export function AdminPage() {
         }),
       ])
 
-      if (!form.logoFile) {
-        return
-      }
-
-      const logoUrl = await uploadAdminSiteLogo({
-        alt: form.logoAlt || form.storeName,
-        file: form.logoFile,
-      })
-
-      await upsertAdminSiteSetting('site_profile', {
-        address: form.address,
-        email: form.email,
-        logoAlt: form.logoAlt,
-        logoUrl,
-        phone: form.phone,
-        storeName: form.storeName,
-      })
+      return { logoUrl }
     },
-    onSuccess: () => {
+    onSuccess: (result) => {
       setSettingsForm((current) => ({
         ...current,
         logoFile: null,
+        logoUrl: result.logoUrl,
       }))
       void queryClient.invalidateQueries()
+      void queryClient.invalidateQueries({
+        queryKey: contentQueryKeys.all,
+      })
+    },
+  })
+  const saveInfoPageMutation = useMutation({
+    mutationFn: saveAdminInfoPage,
+    onSuccess: () => {
+      void queryClient.invalidateQueries({
+        queryKey: adminQueryKeys.infoPages(),
+      })
       void queryClient.invalidateQueries({
         queryKey: contentQueryKeys.all,
       })
@@ -526,6 +566,7 @@ export function AdminPage() {
   const products = productsQuery.data ?? []
   const orders = ordersQuery.data ?? []
   const callbacks = callbacksQuery.data ?? []
+  const infoPages = infoPagesQuery.data ?? []
 
   return (
     <main className="py-10">
@@ -551,6 +592,7 @@ export function AdminPage() {
                 'categories',
                 'orders',
                 'callbacks',
+                'pages',
                 'settings',
               ] as const
             ).map((tab) => (
@@ -625,6 +667,16 @@ export function AdminPage() {
               locale={locale}
               onStatusChange={(id, status) => {
                 updateCallbackMutation.mutate({ id, status })
+              }}
+            />
+          ) : null}
+          {activeTab === 'pages' ? (
+            <PagesAdmin
+              errorMessage={getMutationErrorMessage(saveInfoPageMutation.error)}
+              infoPages={infoPages}
+              labels={labels}
+              onSave={(input) => {
+                saveInfoPageMutation.mutate(input)
               }}
             />
           ) : null}
@@ -950,6 +1002,26 @@ function SettingsAdmin({
   setForm,
   onSubmit,
 }: SettingsAdminProps) {
+  const selectedLogoPreview = useMemo(() => {
+    if (!form.logoFile) {
+      return null
+    }
+
+    return URL.createObjectURL(form.logoFile)
+  }, [form.logoFile])
+
+  useEffect(() => {
+    return () => {
+      if (selectedLogoPreview) {
+        URL.revokeObjectURL(selectedLogoPreview)
+      }
+    }
+  }, [selectedLogoPreview])
+
+  const logoPreviewSource =
+    selectedLogoPreview ??
+    (form.logoUrl.trim().length > 0 ? form.logoUrl : null)
+
   return (
     <Card>
       <CardContent>
@@ -989,10 +1061,10 @@ function SettingsAdmin({
             <Typography as="h2" variant="h3" weight="semibold">
               {labels.logo}
             </Typography>
-            {form.logoUrl ? (
+            {logoPreviewSource ? (
               <img
                 className="h-16 w-full max-w-md object-contain object-left"
-                src={form.logoUrl}
+                src={logoPreviewSource}
                 alt={form.logoAlt}
               />
             ) : null}

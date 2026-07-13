@@ -10,6 +10,7 @@ import {
   getHeaderNavItems,
   type HeaderLabels,
 } from '../model/headerNav'
+import { HeaderLogo } from './HeaderLogo'
 
 interface AppHeaderProps {
   callbackLabels: CallbackLabels
@@ -21,7 +22,7 @@ interface AppHeaderProps {
 
 const navLinkClassName = ({ isActive }: { isActive: boolean }) =>
   cn(
-    'rounded-md px-3 py-2 text-sm font-medium transition-colors',
+    'rounded-md px-2 py-2 text-xs font-medium transition-colors lg:px-3 lg:text-sm',
     isActive
       ? 'bg-slate-900 text-white'
       : 'text-slate-700 hover:bg-slate-100 hover:text-slate-900',
@@ -29,6 +30,16 @@ const navLinkClassName = ({ isActive }: { isActive: boolean }) =>
 
 const iconButtonClassName =
   'inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-full border border-slate-200 bg-white text-slate-900 transition-colors hover:border-slate-300 hover:bg-slate-50'
+
+function normalizeLogoUrl(logoUrl: string | null): string | null {
+  if (!logoUrl) {
+    return null
+  }
+
+  const trimmed = logoUrl.trim()
+
+  return trimmed.length > 0 ? trimmed : null
+}
 
 export function AppHeader({
   callbackLabels,
@@ -39,28 +50,31 @@ export function AppHeader({
 }: AppHeaderProps) {
   const { itemsCount } = useCart()
   const navItems = getHeaderNavItems(headerLabels)
+  const resolvedLogoUrl = normalizeLogoUrl(logoUrl)
 
   return (
     <header className="sticky top-0 z-40 border-b border-slate-200 bg-white/95 backdrop-blur">
       <Container className="flex items-center justify-between gap-4 py-3">
         <Link
           aria-label={headerLabels.home}
-          className="inline-flex max-w-[10rem] shrink-0 sm:max-w-[14rem] lg:max-w-[18rem]"
+          className="inline-flex max-w-[12rem] shrink-0 sm:max-w-[18rem] lg:max-w-[24rem]"
           to="/"
         >
-          {logoUrl ? (
-            <img
+          {resolvedLogoUrl ? (
+            <HeaderLogo
+              key={resolvedLogoUrl}
               alt={logoAlt ?? headerLabels.home}
-              className="h-10 w-auto max-w-full object-contain sm:h-12"
-              src={logoUrl}
+              className="h-12 w-auto max-w-full object-contain sm:h-14"
+              fallbackClassName="block h-12 w-full min-w-[10rem] rounded bg-slate-100 sm:h-14"
+              url={resolvedLogoUrl}
             />
           ) : (
-            <span className="block h-10 w-full min-w-[8rem] rounded bg-slate-100 sm:h-12" />
+            <span className="block h-12 w-full min-w-[10rem] rounded bg-slate-100 sm:h-14" />
           )}
         </Link>
 
-        <nav className="hidden flex-1 justify-center md:flex">
-          <ul className="flex flex-wrap items-center gap-2">
+        <nav className="hidden flex-1 justify-center overflow-x-auto md:flex">
+          <ul className="flex min-w-max items-center gap-1 px-1 lg:gap-2">
             {navItems.map((item) => (
               <li key={item.to}>
                 <NavLink

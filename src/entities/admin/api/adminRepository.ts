@@ -6,7 +6,10 @@ import {
   type TableUpdate,
 } from '@shared/api/supabase'
 import { STORE_CURRENCY } from '@shared/config'
+import { MANAGED_INFO_PAGE_SLUGS } from '@entities/content/model/managedPages'
+import type { ManagedInfoPageSlug } from '@entities/content/model/managedPages'
 import { normalizeSupabaseError } from '@shared/lib/errors'
+import { getJsonString, isJsonRecord } from '@shared/lib/json'
 
 const PRODUCT_IMAGE_BUCKET = 'site-images'
 const MAX_IMAGE_SIZE_BYTES = 10 * 1024 * 1024
@@ -30,14 +33,38 @@ function getSafeFileName(fileName: string): string {
   return fileName.replace(/[^a-zA-Z0-9.-]/g, '-').toLowerCase()
 }
 
-function assertSupportedImage(file: File): void {
+function resolveImageMimeType(file: File): string {
+  if (file.type && SUPPORTED_IMAGE_TYPES.has(file.type)) {
+    return file.type
+  }
+
+  const extension = file.name.split('.').pop()?.toLowerCase()
+  const extensionMimeMap: Record<string, string> = {
+    avif: 'image/avif',
+    gif: 'image/gif',
+    jpg: 'image/jpeg',
+    jpeg: 'image/jpeg',
+    png: 'image/png',
+    svg: 'image/svg+xml',
+    webp: 'image/webp',
+  }
+  const mimeType = extensionMimeMap[extension ?? '']
+
+  if (!mimeType || !SUPPORTED_IMAGE_TYPES.has(mimeType)) {
+    throw new Error(
+      `Unsupported image type: ${(file.type || extension) ?? 'unknown'}`,
+    )
+  }
+
+  return mimeType
+}
+
+function assertSupportedImage(file: File): string {
   if (file.size > MAX_IMAGE_SIZE_BYTES) {
     throw new Error('Image size must be 10 MB or less')
   }
 
-  if (!SUPPORTED_IMAGE_TYPES.has(file.type)) {
-    throw new Error(`Unsupported image type: ${file.type || 'unknown'}`)
-  }
+  return resolveImageMimeType(file)
 }
 
 async function uploadAdminImage({
@@ -49,14 +76,14 @@ async function uploadAdminImage({
   file: File
   folder: string
 }): Promise<UploadedAdminImage> {
-  assertSupportedImage(file)
+  const mimeType = assertSupportedImage(file)
 
   const assetId = crypto.randomUUID()
   const path = `${folder}/${crypto.randomUUID()}-${getSafeFileName(file.name)}`
   const { error: uploadError } = await supabase.storage
     .from(PRODUCT_IMAGE_BUCKET)
     .upload(path, file, {
-      contentType: file.type,
+      contentType: mimeType,
       upsert: false,
     })
 
@@ -73,7 +100,7 @@ async function uploadAdminImage({
     id: assetId,
     alt,
     bucket_id: PRODUCT_IMAGE_BUCKET,
-    mime_type: file.type,
+    mime_type: mimeType,
     path,
     public_url: publicUrl,
     size_bytes: file.size,
@@ -122,6 +149,181 @@ export async function uploadAdminSiteLogo({
 
   return image.publicUrl
 }
+
+export interface AdminInfoPageRecord {
+  page: TableRow<'pages'>
+  section: TableRow<'page_sections'> | null
+}
+
+export interface SaveAdminInfoPageInput {
+  imageAlt: string
+  imageFile: File | null
+  imageUrl: string
+  metaDescription: string
+  metaTitle: string
+  sectionId: string | null
+  sectionText: string
+  slug: ManagedInfoPageSlug
+  title: string
+}
+
+function parseContentSectionPayload(value: Json | undefined) {
+  if (!isJsonRecord(value)) {
+    return {
+      imageAlt: '',
+      imageUrl: '',
+      sectionText: '',
+      title: '',
+    }
+  }
+
+  const image = isJsonRecord(value.image) ? value.image : undefined
+
+  return {
+    imageAlt: image ? (getJsonString(image, 'alt') ?? '') : '',
+    imageUrl: image ? (getJsonString(image, 'url') ?? '') : '',
+    sectionText: getJsonString(value, 'description') ?? '',
+    title: getJsonString(value, 'title') ?? '',
+  }
+}
+
+export async function getAdminInfoPages(): Promise<AdminInfoPageRecord[]> {
+  const { data: pages, error: pagesError } = await supabase
+    .from('pages')
+    .select('*')
+    .in('slug', [...MANAGED_INFO_PAGE_SLUGS])
+    .order('slug', { ascending: true })
+
+  if (pagesError) {
+    throw normalizeSupabaseError(pagesError)
+  }
+
+  const pageIds = pages.map((page) => page.id)
+
+  if (pageIds.length === 0) {
+    return MANAGED_INFO_PAGE_SLUGS.map((slug) => ({
+      page: {
+        id: '',
+        slug,
+        title: '',
+        meta_title: null,
+        meta_description: null,
+        is_published: true,
+        updated_at: new Date().toISOString(),
+      },
+      section: null,
+    }))
+  }
+
+  const { data: sections, error: sectionsError } = await supabase
+    .from('page_sections')
+    .select('*')
+    .in('page_id', pageIds)
+    .eq('type', 'content')
+    .eq('sort_order', 0)
+
+  if (sectionsError) {
+    throw normalizeSupabaseError(sectionsError)
+  }
+
+  return MANAGED_INFO_PAGE_SLUGS.map((slug) => {
+    const page =
+      pages.find((item) => item.slug === slug) ??
+      {
+        id: '',
+        slug,
+        title: '',
+        meta_title: null,
+        meta_description: null,
+        is_published: true,
+        updated_at: new Date().toISOString(),
+      }
+
+    const section =
+      sections.find((item) => item.page_id === page.id && page.id.length > 0) ??
+      null
+
+    return { page, section }
+  })
+}
+
+export async function saveAdminInfoPage(
+  input: SaveAdminInfoPageInput,
+): Promise<void> {
+  let imageUrl = input.imageUrl.trim()
+  const imageAlt = input.imageAlt.trim() || input.title
+
+  if (input.imageFile) {
+    const uploaded = await uploadAdminImage({
+      alt: imageAlt,
+      file: input.imageFile,
+      folder: `pages/${input.slug}`,
+    })
+    imageUrl = uploaded.publicUrl
+  }
+
+  const payload: Json = {
+    title: input.title,
+    description: input.sectionText,
+  }
+
+  if (imageUrl) {
+    payload.image = {
+      alt: imageAlt,
+      url: imageUrl,
+    }
+  }
+
+  const { data: page, error: pageError } = await supabase
+    .from('pages')
+    .upsert(
+      {
+        slug: input.slug,
+        title: input.title,
+        meta_title: input.metaTitle || input.title,
+        meta_description: input.metaDescription,
+        is_published: true,
+      },
+      { onConflict: 'slug' },
+    )
+    .select('id')
+    .single()
+
+  if (pageError) {
+    throw normalizeSupabaseError(pageError)
+  }
+
+  if (input.sectionId) {
+    const { error: sectionError } = await supabase
+      .from('page_sections')
+      .update({
+        payload,
+        type: 'content',
+        is_active: true,
+      })
+      .eq('id', input.sectionId)
+
+    if (sectionError) {
+      throw normalizeSupabaseError(sectionError)
+    }
+
+    return
+  }
+
+  const { error: sectionError } = await supabase.from('page_sections').insert({
+    is_active: true,
+    page_id: page.id,
+    payload,
+    sort_order: 0,
+    type: 'content',
+  })
+
+  if (sectionError) {
+    throw normalizeSupabaseError(sectionError)
+  }
+}
+
+export { parseContentSectionPayload }
 
 export async function getAdminCategories(): Promise<TableRow<'categories'>[]> {
   const { data, error } = await supabase

@@ -12,6 +12,7 @@ import {
   HomePage,
   NewsPage,
   ProductDetailsPage,
+  StaticContentPage,
 } from '@pages/index'
 
 export const router = createBrowserRouter(
@@ -30,6 +31,18 @@ export const router = createBrowserRouter(
         {
           path: 'catalog/:categorySlug',
           element: <CatalogPage />,
+        },
+        {
+          path: 'delivery',
+          element: <StaticContentPage slug="delivery" />,
+        },
+        {
+          path: 'warranty',
+          element: <StaticContentPage slug="warranty" />,
+        },
+        {
+          path: 'about',
+          element: <StaticContentPage slug="about" />,
         },
         {
           path: 'contacts',

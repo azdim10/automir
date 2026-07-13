@@ -23,6 +23,16 @@ values
       "max": "Max",
       "name": "Название",
       "orders": "Заказы",
+      "pages": "Страницы",
+      "pageTitle": "Заголовок страницы",
+      "pageMetaTitle": "SEO заголовок",
+      "pageMetaDescription": "SEO описание",
+      "sectionText": "Основной текст",
+      "pageImage": "Изображение",
+      "pageImageAlt": "Описание изображения",
+      "deliveryPage": "Доставка",
+      "warrantyPage": "Гарантия",
+      "aboutPage": "О компании",
       "password": "Пароль",
       "price": "Цена",
       "products": "Товары",
@@ -110,6 +120,9 @@ values
   ('header_labels', '{
     "home": "Главная",
     "catalog": "Каталог",
+    "delivery": "Доставка",
+    "warranty": "Гарантия",
+    "about": "О компании",
     "contacts": "Контакты",
     "news": "Новости",
     "requestCall": "Заказать звонок"
@@ -197,7 +210,10 @@ values
   ('home', 'Главная', 'Главная', 'Главная страница', true),
   ('catalog', 'Каталог', 'Каталог', 'Каталог товаров', true),
   ('contacts', 'Контакты', 'Контакты', 'Контакты магазина', true),
-  ('news', 'Новости', 'Новости', 'Новости магазина', true)
+  ('news', 'Новости', 'Новости', 'Новости магазина', true),
+  ('delivery', 'Доставка', 'Доставка', 'Условия доставки товаров', true),
+  ('warranty', 'Гарантия', 'Гарантия', 'Гарантийные условия', true),
+  ('about', 'О компании', 'О компании', 'Информация о компании', true)
 on conflict (slug) do update
 set title = excluded.title,
     meta_title = excluded.meta_title,
@@ -226,6 +242,51 @@ where p.slug = 'news'
     from public.page_sections ps
     where ps.page_id = p.id
       and ps.type = 'feature_grid'
+      and ps.sort_order = 0
+  );
+
+insert into public.page_sections (page_id, type, sort_order, payload, is_active)
+select p.id, 'content', 0, '{
+  "title": "Доставка",
+  "description": "Мы доставляем заказы по городу и в регионы. Сроки и стоимость зависят от адреса и состава заказа. Менеджер свяжется с вами после оформления для подтверждения деталей."
+}'::jsonb, true
+from public.pages p
+where p.slug = 'delivery'
+  and not exists (
+    select 1
+    from public.page_sections ps
+    where ps.page_id = p.id
+      and ps.type = 'content'
+      and ps.sort_order = 0
+  );
+
+insert into public.page_sections (page_id, type, sort_order, payload, is_active)
+select p.id, 'content', 0, '{
+  "title": "Гарантия",
+  "description": "На все товары действует гарантия производителя. При обнаружении заводского брака обратитесь в сервисный центр или к нам — поможем с оформлением гарантийного случая."
+}'::jsonb, true
+from public.pages p
+where p.slug = 'warranty'
+  and not exists (
+    select 1
+    from public.page_sections ps
+    where ps.page_id = p.id
+      and ps.type = 'content'
+      and ps.sort_order = 0
+  );
+
+insert into public.page_sections (page_id, type, sort_order, payload, is_active)
+select p.id, 'content', 0, '{
+  "title": "О компании",
+  "description": "Automir — интернет-магазин автотоваров. Мы подбираем качественные позиции, помогаем с выбором и обеспечиваем удобную доставку."
+}'::jsonb, true
+from public.pages p
+where p.slug = 'about'
+  and not exists (
+    select 1
+    from public.page_sections ps
+    where ps.page_id = p.id
+      and ps.type = 'content'
       and ps.sort_order = 0
   );
 
