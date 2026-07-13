@@ -3,11 +3,13 @@
 @layer base {
   html {
     min-height: 100%;
+    overflow-x: clip;
   }
 
   body {
     min-height: 100%;
     margin: 0;
+    overflow-x: clip;
   }
 
   #root {

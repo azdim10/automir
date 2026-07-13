@@ -1182,7 +1182,7 @@ function SettingsAdmin({
             {footerCertificatePreviewSource ? (
               <img
                 alt={form.footerCertificateAlt}
-                className="h-56 w-auto max-w-[12rem] rounded-md border border-slate-200 bg-white object-contain shadow-sm"
+                className="h-auto w-[5.5rem] bg-white object-contain shadow-[0_0_0_1px_rgba(255,255,255,0.9)]"
                 src={footerCertificatePreviewSource}
               />
             ) : null}
