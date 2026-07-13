@@ -20,11 +20,12 @@ export function HeaderSearch({ ariaLabel, placeholder }: HeaderSearchProps) {
     setQuery(urlQuery)
   }
 
-  function navigateToCatalog(nextQuery = query) {
+  function navigateToCatalog(nextQuery: string) {
+    const trimmedQuery = nextQuery.trim()
     const params = new URLSearchParams()
 
-    if (nextQuery.trim().length > 0) {
-      params.set('search', nextQuery.trim())
+    if (trimmedQuery.length > 0) {
+      params.set('search', trimmedQuery)
     }
 
     const suffix = params.toString()
@@ -39,8 +40,9 @@ export function HeaderSearch({ ariaLabel, placeholder }: HeaderSearchProps) {
       placeholder={placeholder}
       search={query}
       onSearchChange={setQuery}
-      onSubmit={() => {
-        navigateToCatalog()
+      onSubmit={(nextQuery) => {
+        setQuery(nextQuery)
+        navigateToCatalog(nextQuery)
       }}
     />
   )

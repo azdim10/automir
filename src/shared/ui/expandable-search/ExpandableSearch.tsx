@@ -17,13 +17,10 @@ interface ExpandableSearchProps {
   compact?: boolean
   defaultOpen?: boolean
   onChange: (value: string) => void
-  onSubmit?: () => void
+  onSubmit?: (value: string) => void
   placeholder?: string
   value: string
 }
-
-const toggleButtonClassName =
-  'inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-full border border-slate-200 bg-white text-slate-900 transition-colors hover:border-slate-300 hover:bg-slate-50'
 
 export function ExpandableSearch({
   ariaLabel,
@@ -74,7 +71,15 @@ export function ExpandableSearch({
 
   function handleSubmit(event: SyntheticEvent<HTMLFormElement>) {
     event.preventDefault()
-    onSubmit?.()
+    onSubmit?.(value)
+  }
+
+  function openSearch() {
+    setIsOpen(true)
+  }
+
+  function closeSearch() {
+    setIsOpen(false)
   }
 
   if (!compact) {
@@ -94,23 +99,28 @@ export function ExpandableSearch({
   }
 
   return (
-    <form className="flex items-center justify-end" onSubmit={handleSubmit}>
+    <form className="flex justify-end" onSubmit={handleSubmit}>
       <div
         className={cn(
-          'grid items-center overflow-hidden transition-[grid-template-columns] duration-300 ease-out',
+          'flex h-11 items-center overflow-hidden rounded-full border bg-white transition-[width,border-color,box-shadow] duration-300 ease-out',
           isOpen
-            ? 'grid-cols-[minmax(0,11rem)_auto] sm:grid-cols-[minmax(0,14rem)_auto]'
-            : 'grid-cols-[0fr_auto]',
+            ? 'w-[13rem] border-slate-300 pl-3 shadow-sm sm:w-[16rem]'
+            : 'w-11 border-slate-200 hover:border-slate-300 hover:bg-slate-50',
         )}
       >
-        <Input
+        <input
           ref={inputRef}
           aria-label={ariaLabel}
-          className="min-w-0"
-          fullWidth
+          className={cn(
+            'min-w-0 flex-1 border-0 bg-transparent text-sm text-slate-900 outline-none placeholder:text-slate-400',
+            isOpen
+              ? 'pointer-events-auto opacity-100'
+              : 'pointer-events-none w-0 opacity-0',
+          )}
           id={inputId}
-          inputSize="sm"
           placeholder={placeholder}
+          tabIndex={isOpen ? 0 : -1}
+          type="search"
           value={value}
           onChange={(event) => {
             onChange(event.target.value)
@@ -120,10 +130,15 @@ export function ExpandableSearch({
           aria-controls={inputId}
           aria-expanded={isOpen}
           aria-label={isOpen ? 'Скрыть поиск' : ariaLabel}
-          className={cn(toggleButtonClassName, isOpen && 'rounded-l-none border-l-0')}
+          className="inline-flex h-11 w-11 shrink-0 items-center justify-center text-slate-900 transition-colors hover:text-slate-700"
           type="button"
           onClick={() => {
-            setIsOpen((current) => !current)
+            if (isOpen) {
+              closeSearch()
+              return
+            }
+
+            openSearch()
           }}
         >
           {isOpen ? (

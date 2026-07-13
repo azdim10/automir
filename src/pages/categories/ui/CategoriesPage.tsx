@@ -1,7 +1,8 @@
-import { Link } from 'react-router'
+import { Link, useSearchParams } from 'react-router'
 
 import { useCategories } from '@entities/category'
 import { useSiteSettings } from '@entities/content'
+import { CatalogPage } from '@pages/catalog'
 import type { Json } from '@shared/api/supabase'
 import { getJsonString, isJsonRecord } from '@shared/lib/json'
 import {
@@ -52,9 +53,15 @@ function CategoriesPageSkeleton() {
 }
 
 export function CategoriesPage() {
+  const [searchParams] = useSearchParams()
+  const search = searchParams.get('search')?.trim() ?? ''
   const { data: siteSettings } = useSiteSettings()
   const { data: categories = [], isLoading } = useCategories()
   const labels = parseCategoriesLabels(siteSettings?.categories_labels)
+
+  if (search.length > 0) {
+    return <CatalogPage />
+  }
 
   if (isLoading || !labels) {
     return <CategoriesPageSkeleton />

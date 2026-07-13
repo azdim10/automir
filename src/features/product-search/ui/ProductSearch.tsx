@@ -9,7 +9,7 @@ interface ProductSearchProps {
   defaultOpen?: boolean
   label?: string
   onSearchChange: (search: string) => void
-  onSubmit?: () => void
+  onSubmit?: (search: string) => void
   placeholder?: string
   search: string
 }
@@ -47,7 +47,7 @@ export function ProductSearch({
       value={inputValue}
       onChange={setInputValue}
       {...(placeholder ? { placeholder } : {})}
-      {...(onSubmit ? { onSubmit } : {})}
+      {...(onSubmit ? { onSubmit: (nextValue) => onSubmit(nextValue) } : {})}
     />
   )
 
