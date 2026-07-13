@@ -4,6 +4,12 @@ import { useSiteSettings } from '@entities/content'
 import type { CallbackLabels } from '@features/request-callback'
 import type { Json } from '@shared/api/supabase'
 import { getJsonString, isJsonRecord } from '@shared/lib/json'
+import {
+  AppFooter,
+  AppFooterSkeleton,
+  parseFooterLabels,
+  parseFooterSettings,
+} from '@widgets/app-footer'
 import { AppHeader, AppHeaderSkeleton } from '@widgets/app-header'
 import type { HeaderLabels } from '@widgets/app-header/model/headerNav'
 
@@ -108,6 +114,8 @@ export function ShopLayout() {
   const cartAriaLabel = parseCartAriaLabel(siteSettings?.cart_labels)
   const headerLabels = parseHeaderLabels(siteSettings?.header_labels)
   const callbackLabels = parseCallbackLabels(siteSettings?.callback_labels)
+  const footerLabels = parseFooterLabels(siteSettings?.footer_labels)
+  const footerSettings = parseFooterSettings(siteSettings?.footer_settings)
 
   if (
     isLoading ||
@@ -120,6 +128,7 @@ export function ShopLayout() {
       <>
         <AppHeaderSkeleton />
         <Outlet />
+        <AppFooterSkeleton />
       </>
     )
   }
@@ -134,6 +143,11 @@ export function ShopLayout() {
         logoUrl={siteProfile.logoUrl}
       />
       <Outlet />
+      {footerLabels && footerSettings ? (
+        <AppFooter labels={footerLabels} settings={footerSettings} />
+      ) : (
+        <AppFooterSkeleton />
+      )}
     </>
   )
 }

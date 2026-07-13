@@ -150,6 +150,22 @@ export async function uploadAdminSiteLogo({
   return image.publicUrl
 }
 
+export async function uploadAdminFooterBackground({
+  alt,
+  file,
+}: {
+  alt: string
+  file: File
+}): Promise<string> {
+  const image = await uploadAdminImage({
+    alt,
+    file,
+    folder: 'settings/footer',
+  })
+
+  return image.publicUrl
+}
+
 export interface AdminInfoPageRecord {
   page: TableRow<'pages'>
   section: TableRow<'page_sections'> | null

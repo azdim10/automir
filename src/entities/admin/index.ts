@@ -16,6 +16,7 @@ export {
   updateAdminOrderStatus,
   updateAdminProduct,
   uploadAdminSiteLogo,
+  uploadAdminFooterBackground,
   uploadAdminProductImage,
   upsertAdminSiteSetting,
 } from './api/adminRepository'

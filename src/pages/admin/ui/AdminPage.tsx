@@ -16,6 +16,7 @@ import {
   updateAdminCallbackRequestStatus,
   updateAdminCategory,
   updateAdminOrderStatus,
+  uploadAdminFooterBackground,
   uploadAdminSiteLogo,
   upsertAdminSiteSetting,
 } from '@entities/admin'
@@ -38,6 +39,10 @@ import {
   Typography,
 } from '@shared/ui'
 
+import {
+  joinMultilineValues,
+  splitMultilineValues,
+} from '@widgets/app-footer'
 import { PagesAdmin } from './PagesAdmin'
 import {
   createEmptyProductForm,
@@ -72,6 +77,13 @@ interface AdminLabels {
   deliveryPage: string
   description: string
   email: string
+  footer: string
+  footerAddress: string
+  footerBackground: string
+  footerCompanyName: string
+  footerCopyright: string
+  footerEmails: string
+  footerPhones: string
   image: string
   imageAlt: string
   inactive: string
@@ -137,6 +149,14 @@ interface CategoryFormState {
 interface SiteSettingsFormState {
   address: string
   email: string
+  footerAddress: string
+  footerBackgroundAlt: string
+  footerBackgroundFile: File | null
+  footerBackgroundUrl: string
+  footerCompanyName: string
+  footerCopyright: string
+  footerEmails: string
+  footerPhones: string
   logoAlt: string
   logoFile: File | null
   logoUrl: string
@@ -173,6 +193,13 @@ function parseAdminLabels(value: Json | undefined): AdminLabels | null {
     'deliveryPage',
     'description',
     'email',
+    'footer',
+    'footerAddress',
+    'footerBackground',
+    'footerCompanyName',
+    'footerCopyright',
+    'footerEmails',
+    'footerPhones',
     'image',
     'imageAlt',
     'inactive',
@@ -283,10 +310,41 @@ function createSettingsForm(
   const seoSettings = isJsonRecord(siteSettings?.seo_settings)
     ? siteSettings.seo_settings
     : undefined
+  const footerSettings = isJsonRecord(siteSettings?.footer_settings)
+    ? siteSettings.footer_settings
+    : undefined
+  const footerEmails = Array.isArray(footerSettings?.emails)
+    ? footerSettings.emails.flatMap((item) =>
+        typeof item === 'string' && item.trim().length > 0 ? [item.trim()] : [],
+      )
+    : []
+  const footerPhones = Array.isArray(footerSettings?.phones)
+    ? footerSettings.phones.flatMap((item) =>
+        typeof item === 'string' && item.trim().length > 0 ? [item.trim()] : [],
+      )
+    : []
 
   return {
     address: siteProfile ? (getJsonString(siteProfile, 'address') ?? '') : '',
     email: siteProfile ? (getJsonString(siteProfile, 'email') ?? '') : '',
+    footerAddress: footerSettings
+      ? (getJsonString(footerSettings, 'address') ?? '')
+      : '',
+    footerBackgroundAlt: footerSettings
+      ? (getJsonString(footerSettings, 'backgroundAlt') ?? 'Фон футера')
+      : 'Фон футера',
+    footerBackgroundFile: null,
+    footerBackgroundUrl: footerSettings
+      ? (getJsonString(footerSettings, 'backgroundUrl') ?? '')
+      : '',
+    footerCompanyName: footerSettings
+      ? (getJsonString(footerSettings, 'companyName') ?? '')
+      : '',
+    footerCopyright: footerSettings
+      ? (getJsonString(footerSettings, 'copyright') ?? '')
+      : '',
+    footerEmails: joinMultilineValues(footerEmails),
+    footerPhones: joinMultilineValues(footerPhones),
     logoAlt: siteProfile ? (getJsonString(siteProfile, 'logoAlt') ?? '') : '',
     logoFile: null,
     logoUrl: siteProfile ? (getJsonString(siteProfile, 'logoUrl') ?? '') : '',
@@ -449,11 +507,19 @@ export function AdminPage() {
   const saveSettingsMutation = useMutation({
     mutationFn: async (form: SiteSettingsFormState) => {
       let logoUrl = form.logoUrl.trim()
+      let footerBackgroundUrl = form.footerBackgroundUrl.trim()
 
       if (form.logoFile) {
         logoUrl = await uploadAdminSiteLogo({
           alt: form.logoAlt || form.storeName || 'Logo',
           file: form.logoFile,
+        })
+      }
+
+      if (form.footerBackgroundFile) {
+        footerBackgroundUrl = await uploadAdminFooterBackground({
+          alt: form.footerBackgroundAlt || 'Footer background',
+          file: form.footerBackgroundFile,
         })
       }
 
@@ -477,13 +543,24 @@ export function AdminPage() {
           keywords: form.seoKeywords,
           title: form.seoTitle,
         }),
+        upsertAdminSiteSetting('footer_settings', {
+          address: form.footerAddress,
+          backgroundAlt: form.footerBackgroundAlt,
+          backgroundUrl: footerBackgroundUrl,
+          companyName: form.footerCompanyName,
+          copyright: form.footerCopyright,
+          emails: splitMultilineValues(form.footerEmails),
+          phones: splitMultilineValues(form.footerPhones),
+        }),
       ])
 
-      return { logoUrl }
+      return { footerBackgroundUrl, logoUrl }
     },
     onSuccess: (result) => {
       setSettingsForm((current) => ({
         ...current,
+        footerBackgroundFile: null,
+        footerBackgroundUrl: result.footerBackgroundUrl,
         logoFile: null,
         logoUrl: result.logoUrl,
       }))
@@ -839,6 +916,28 @@ function SettingsAdmin({
     selectedLogoPreview ??
     (form.logoUrl.trim().length > 0 ? form.logoUrl : null)
 
+  const footerBackgroundPreview = useMemo(() => {
+    if (!form.footerBackgroundFile) {
+      return null
+    }
+
+    return URL.createObjectURL(form.footerBackgroundFile)
+  }, [form.footerBackgroundFile])
+
+  useEffect(() => {
+    return () => {
+      if (footerBackgroundPreview) {
+        URL.revokeObjectURL(footerBackgroundPreview)
+      }
+    }
+  }, [footerBackgroundPreview])
+
+  const footerBackgroundPreviewSource =
+    footerBackgroundPreview ??
+    (form.footerBackgroundUrl.trim().length > 0
+      ? form.footerBackgroundUrl
+      : null)
+
   return (
     <Card>
       <CardContent>
@@ -937,6 +1036,81 @@ function SettingsAdmin({
                 }}
               />
             </div>
+          </div>
+          <div className="grid gap-3">
+            <Typography as="h2" variant="h3" weight="semibold">
+              {labels.footer}
+            </Typography>
+            <Input
+              placeholder={labels.footerCopyright}
+              value={form.footerCopyright}
+              onChange={(event) => {
+                setForm({ ...form, footerCopyright: event.target.value })
+              }}
+            />
+            <Input
+              placeholder={labels.footerCompanyName}
+              value={form.footerCompanyName}
+              onChange={(event) => {
+                setForm({ ...form, footerCompanyName: event.target.value })
+              }}
+            />
+            <Input
+              placeholder={labels.footerAddress}
+              value={form.footerAddress}
+              onChange={(event) => {
+                setForm({ ...form, footerAddress: event.target.value })
+              }}
+            />
+            <label className="grid gap-2">
+              <span className="text-sm font-medium">{labels.footerEmails}</span>
+              <textarea
+                className="min-h-24 w-full rounded-md border border-slate-300 px-3 py-2 text-sm outline-none focus:border-slate-500"
+                placeholder={labels.footerEmails}
+                value={form.footerEmails}
+                onChange={(event) => {
+                  setForm({ ...form, footerEmails: event.target.value })
+                }}
+              />
+            </label>
+            <label className="grid gap-2">
+              <span className="text-sm font-medium">{labels.footerPhones}</span>
+              <textarea
+                className="min-h-24 w-full rounded-md border border-slate-300 px-3 py-2 text-sm outline-none focus:border-slate-500"
+                placeholder={labels.footerPhones}
+                value={form.footerPhones}
+                onChange={(event) => {
+                  setForm({ ...form, footerPhones: event.target.value })
+                }}
+              />
+            </label>
+            <Typography as="h3" variant="body" weight="semibold">
+              {labels.footerBackground}
+            </Typography>
+            {footerBackgroundPreviewSource ? (
+              <img
+                alt={form.footerBackgroundAlt}
+                className="h-32 w-full max-w-3xl rounded-lg object-cover object-center"
+                src={footerBackgroundPreviewSource}
+              />
+            ) : null}
+            <Input
+              placeholder={labels.imageAlt}
+              value={form.footerBackgroundAlt}
+              onChange={(event) => {
+                setForm({ ...form, footerBackgroundAlt: event.target.value })
+              }}
+            />
+            <Input
+              accept="image/*"
+              type="file"
+              onChange={(event) => {
+                setForm({
+                  ...form,
+                  footerBackgroundFile: event.target.files?.[0] ?? null,
+                })
+              }}
+            />
           </div>
           <div className="grid gap-3">
             <Typography as="h2" variant="h3" weight="semibold">
