@@ -61,6 +61,8 @@ function parseHeaderLabels(value: Json | undefined): HeaderLabels | null {
     'contacts',
     'news',
     'requestCall',
+    'search',
+    'searchPlaceholder',
   ]
   const labels: Partial<HeaderLabels> = {}
 

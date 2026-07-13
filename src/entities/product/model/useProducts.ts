@@ -8,5 +8,6 @@ export function useProducts(params: ProductListParams = {}) {
   return useQuery({
     queryKey: productQueryKeys.list(params),
     queryFn: () => getProducts(params),
+    placeholderData: (previousData) => previousData,
   })
 }

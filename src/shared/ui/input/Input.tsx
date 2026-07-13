@@ -1,4 +1,4 @@
-import type { InputHTMLAttributes } from 'react'
+import { forwardRef, type InputHTMLAttributes } from 'react'
 
 import { cn } from '@shared/lib/styles/cn'
 
@@ -23,15 +23,19 @@ const stateClassName: Record<InputState, string> = {
   success: 'border-emerald-500 focus:border-emerald-600',
 }
 
-export function Input({
-  className,
-  fullWidth = true,
-  inputSize = 'md',
-  state = 'default',
-  ...props
-}: InputProps) {
+export const Input = forwardRef<HTMLInputElement, InputProps>(function Input(
+  {
+    className,
+    fullWidth = true,
+    inputSize = 'md',
+    state = 'default',
+    ...props
+  },
+  ref,
+) {
   return (
     <input
+      ref={ref}
       className={cn(
         'rounded-md border bg-white outline-none transition-colors placeholder:text-slate-400 disabled:cursor-not-allowed disabled:bg-slate-50 disabled:text-slate-500',
         sizeClassName[inputSize],
@@ -42,4 +46,4 @@ export function Input({
       {...props}
     />
   )
-}
+})

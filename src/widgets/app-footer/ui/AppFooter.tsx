@@ -64,19 +64,30 @@ function FooterCertificate({ alt, url }: { alt: string; url: string }) {
 
 export function AppFooter({ labels, settings }: AppFooterProps) {
   const hasCertificate = Boolean(settings.certificateUrl)
+  const hasBackground = Boolean(settings.backgroundUrl)
 
   return (
-    <footer className="relative overflow-hidden bg-[#E6F2FF]">
-      {settings.backgroundUrl ? (
-        <div
-          aria-hidden
-          className="pointer-events-none absolute inset-0 bg-cover bg-center opacity-35"
-          style={{
-            backgroundImage: `url("${settings.backgroundUrl}")`,
-          }}
-        />
+    <footer className="relative overflow-hidden">
+      <div
+        aria-hidden
+        className="absolute inset-0 bg-gradient-to-b from-white to-[#E6F2FF]"
+      />
+      {hasBackground && settings.backgroundUrl ? (
+        <>
+          <div
+            aria-hidden
+            className="absolute inset-0 bg-cover bg-center"
+            style={{
+              backgroundImage: `url("${settings.backgroundUrl}")`,
+            }}
+          />
+          <div
+            aria-hidden
+            className="absolute inset-0 bg-gradient-to-b from-white via-[#E6F2FF]/80 to-[#E6F2FF]/95"
+          />
+        </>
       ) : null}
-      <Container className="relative">
+      <Container className="relative z-[1]">
         <div
           className={cn(
             'flex flex-col gap-5 py-5 sm:py-6',
@@ -151,7 +162,7 @@ export function AppFooter({ labels, settings }: AppFooterProps) {
 
 export function AppFooterSkeleton() {
   return (
-    <footer className="bg-[#E6F2FF]">
+    <footer className="bg-gradient-to-b from-white to-[#E6F2FF]">
       <Container>
         <div className="flex flex-col gap-5 py-5 sm:py-6 lg:flex-row lg:items-center lg:justify-between lg:gap-8">
           <div className="space-y-2">

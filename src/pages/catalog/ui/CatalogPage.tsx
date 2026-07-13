@@ -6,7 +6,8 @@ import { type ProductSort, useProducts } from '@entities/product'
 import { ProductFilters, ProductSearch } from '@features/index'
 import type { Json } from '@shared/api/supabase'
 import { getJsonNumber, getJsonString, isJsonRecord } from '@shared/lib/json'
-import { Button, Container, EmptyState, Skeleton, Typography } from '@shared/ui'
+import { cn } from '@shared/lib/styles/cn'
+import { Button, Container, EmptyState, Loader, Skeleton, Typography } from '@shared/ui'
 import { ProductGrid } from '@widgets/product-grid'
 
 const DEFAULT_PAGE = 1
@@ -144,7 +145,11 @@ export function CatalogPage() {
     : null
   const limit =
     pageSizeSetting && pageSizeSetting > 0 ? pageSizeSetting : DEFAULT_LIMIT
-  const { data: productList, isLoading: isProductsLoading } = useProducts({
+  const {
+    data: productList,
+    isFetching: isProductsFetching,
+    isLoading: isProductsLoading,
+  } = useProducts({
     ...(selectedCategorySlug ? { categorySlug: selectedCategorySlug } : {}),
     ...(search ? { search } : {}),
     limit,
@@ -158,6 +163,7 @@ export function CatalogPage() {
   const totalPages = productList
     ? Math.max(1, Math.ceil(productList.total / limit))
     : 1
+  const isInitialProductsLoading = isProductsLoading && !productList
 
   function updateCatalogParams(updates: Record<string, string>) {
     const nextParams = new URLSearchParams(searchParams)
@@ -175,7 +181,7 @@ export function CatalogPage() {
 
   if (
     isPageLoading ||
-    isProductsLoading ||
+    isInitialProductsLoading ||
     !pageContent ||
     !productList ||
     typeof locale !== 'string' ||
@@ -198,9 +204,16 @@ export function CatalogPage() {
                 {labels.total}: {productList.total}
               </Typography>
             </div>
+            {isProductsFetching ? (
+              <div className="flex items-center gap-2 text-sm text-slate-500">
+                <Loader size="sm" />
+                <span>Обновление...</span>
+              </div>
+            ) : null}
           </div>
           <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_minmax(0,2fr)]">
             <ProductSearch
+              ariaLabel={labels.search}
               label={labels.search}
               placeholder={labels.searchPlaceholder}
               search={search}
@@ -222,38 +235,47 @@ export function CatalogPage() {
               }}
             />
           </div>
-          {productList.items.length > 0 ? (
-            <ProductGrid
-              products={productList.items}
-              locale={locale}
-              getProductHref={(product) => `/product/${product.id}`}
-            />
-          ) : (
-            <EmptyState title={labels.empty} />
-          )}
-          <div className="flex flex-wrap items-center justify-center gap-3">
-            <Button
-              disabled={page <= 1}
-              variant="outline"
-              onClick={() => {
-                updateCatalogParams({ page: String(page - 1) })
-              }}
-            >
-              {labels.previousPage}
-            </Button>
-            <Typography variant="body-sm">
-              {labels.page} {page} / {totalPages}
-            </Typography>
-            <Button
-              disabled={page >= totalPages}
-              variant="outline"
-              onClick={() => {
-                updateCatalogParams({ page: String(page + 1) })
-              }}
-            >
-              {labels.nextPage}
-            </Button>
+          <div
+            className={cn(
+              'transition-opacity duration-200',
+              isProductsFetching && 'opacity-60',
+            )}
+          >
+            {productList.items.length > 0 ? (
+              <ProductGrid
+                products={productList.items}
+                locale={locale}
+                getProductHref={(product) => `/product/${product.id}`}
+              />
+            ) : (
+              <EmptyState title={labels.empty} />
+            )}
           </div>
+          {totalPages > 1 ? (
+            <div className="flex flex-wrap items-center justify-center gap-3">
+              <Button
+                disabled={page <= 1 || isProductsFetching}
+                variant="outline"
+                onClick={() => {
+                  updateCatalogParams({ page: String(page - 1) })
+                }}
+              >
+                {labels.previousPage}
+              </Button>
+              <Typography variant="body-sm">
+                {labels.page} {page} / {totalPages}
+              </Typography>
+              <Button
+                disabled={page >= totalPages || isProductsFetching}
+                variant="outline"
+                onClick={() => {
+                  updateCatalogParams({ page: String(page + 1) })
+                }}
+              >
+                {labels.nextPage}
+              </Button>
+            </div>
+          ) : null}
         </div>
       </Container>
     </main>

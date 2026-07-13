@@ -15,6 +15,7 @@ import {
 } from '../model/headerNav'
 import { HeaderLogo } from './HeaderLogo'
 import { HeaderNavLinks } from './HeaderNavLinks'
+import { HeaderSearch } from './HeaderSearch'
 
 interface AppHeaderProps {
   callbackLabels: CallbackLabels
@@ -103,6 +104,11 @@ export function AppHeader({
         </nav>
 
         <div className="ml-auto flex shrink-0 items-center gap-2">
+          <HeaderSearch
+            ariaLabel={headerLabels.search}
+            placeholder={headerLabels.searchPlaceholder}
+          />
+
           <button
             aria-controls={mobileMenuId}
             aria-expanded={isMobileMenuOpen}
@@ -169,7 +175,7 @@ export function AppHeaderSkeleton() {
         <Skeleton className="h-10 w-32 sm:h-11 sm:w-40" />
         <div className="flex gap-2">
           <Skeleton className="h-11 w-11 rounded-full lg:hidden" />
-          <Skeleton className="hidden h-8 w-72 rounded lg:block" />
+          <Skeleton className="h-11 w-11 rounded-full" />
           <Skeleton className="h-11 w-11 rounded-full" />
           <Skeleton className="h-11 w-11 rounded-full" />
         </div>

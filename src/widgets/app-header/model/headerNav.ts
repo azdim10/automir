@@ -6,6 +6,8 @@ export interface HeaderLabels {
   home: string
   news: string
   requestCall: string
+  search: string
+  searchPlaceholder: string
   warranty: string
 }
 

@@ -179,7 +179,9 @@ values
     "about": "О компании",
     "contacts": "Контакты",
     "news": "Новости",
-    "requestCall": "Заказать звонок"
+    "requestCall": "Заказать звонок",
+    "search": "Поиск",
+    "searchPlaceholder": "Название или артикул"
   }'::jsonb),
   (
     'categories_labels',
