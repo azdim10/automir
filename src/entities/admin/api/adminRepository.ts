@@ -168,10 +168,18 @@ export async function uploadAdminFooterBackground({
 
 export interface AdminInfoPageRecord {
   page: TableRow<'pages'>
+  secondarySection: TableRow<'page_sections'> | null
   section: TableRow<'page_sections'> | null
 }
 
 export interface SaveAdminInfoPageInput {
+  catalogActionLabel: string
+  descriptionLeft: string
+  descriptionRight: string
+  featuredDetailsLabel: string
+  featuredLimit: string
+  featuredSectionId: string | null
+  featuredTitle: string
   imageAlt: string
   imageFile: File | null
   imageUrl: string
@@ -218,6 +226,92 @@ function parseContentSectionPayload(value: Json | undefined) {
   }
 }
 
+function parseWelcomeSectionPayload(value: Json | undefined) {
+  if (!isJsonRecord(value)) {
+    return {
+      catalogActionLabel: '',
+      descriptionLeft: '',
+      descriptionRight: '',
+      title: '',
+    }
+  }
+
+  const actions = Array.isArray(value.actions) ? value.actions : []
+  const firstAction = actions.find((item) => isJsonRecord(item))
+  const actionRecord = isJsonRecord(firstAction) ? firstAction : undefined
+
+  return {
+    catalogActionLabel: actionRecord
+      ? (getJsonString(actionRecord, 'label') ?? '')
+      : '',
+    descriptionLeft: getJsonString(value, 'descriptionLeft') ?? '',
+    descriptionRight: getJsonString(value, 'descriptionRight') ?? '',
+    title: getJsonString(value, 'title') ?? '',
+  }
+}
+
+function parseFeaturedSectionPayload(value: Json | undefined) {
+  if (!isJsonRecord(value)) {
+    return {
+      featuredDetailsLabel: 'Подробнее >>',
+      featuredLimit: '6',
+      featuredTitle: '',
+    }
+  }
+
+  return {
+    featuredDetailsLabel:
+      getJsonString(value, 'detailsLabel') ?? 'Подробнее >>',
+    featuredLimit:
+      typeof value.limit === 'number' ? String(value.limit) : '6',
+    featuredTitle: getJsonString(value, 'title') ?? '',
+  }
+}
+
+async function upsertPageSection({
+  pageId,
+  payload,
+  sectionId,
+  sortOrder,
+  type,
+}: {
+  pageId: string
+  payload: Json
+  sectionId: string | null
+  sortOrder: number
+  type: string
+}): Promise<void> {
+  if (sectionId) {
+    const { error } = await supabase
+      .from('page_sections')
+      .update({
+        is_active: true,
+        payload,
+        sort_order: sortOrder,
+        type,
+      })
+      .eq('id', sectionId)
+
+    if (error) {
+      throw normalizeSupabaseError(error)
+    }
+
+    return
+  }
+
+  const { error } = await supabase.from('page_sections').insert({
+    is_active: true,
+    page_id: pageId,
+    payload,
+    sort_order: sortOrder,
+    type,
+  })
+
+  if (error) {
+    throw normalizeSupabaseError(error)
+  }
+}
+
 export async function getAdminInfoPages(): Promise<AdminInfoPageRecord[]> {
   const { data: pages, error: pagesError } = await supabase
     .from('pages')
@@ -242,6 +336,7 @@ export async function getAdminInfoPages(): Promise<AdminInfoPageRecord[]> {
         is_published: true,
         updated_at: new Date().toISOString(),
       },
+      secondarySection: null,
       section: null,
     }))
   }
@@ -250,8 +345,8 @@ export async function getAdminInfoPages(): Promise<AdminInfoPageRecord[]> {
     .from('page_sections')
     .select('*')
     .in('page_id', pageIds)
-    .eq('type', 'content')
-    .eq('sort_order', 0)
+    .eq('is_active', true)
+    .order('sort_order', { ascending: true })
 
   if (sectionsError) {
     throw normalizeSupabaseError(sectionsError)
@@ -270,17 +365,112 @@ export async function getAdminInfoPages(): Promise<AdminInfoPageRecord[]> {
         updated_at: new Date().toISOString(),
       }
 
-    const section =
-      sections.find((item) => item.page_id === page.id && page.id.length > 0) ??
-      null
+    if (slug === 'home') {
+      const section =
+        sections.find(
+          (item) =>
+            item.page_id === page.id &&
+            page.id.length > 0 &&
+            item.type === 'welcome' &&
+            item.sort_order === 0,
+        ) ?? null
+      const secondarySection =
+        sections.find(
+          (item) =>
+            item.page_id === page.id &&
+            page.id.length > 0 &&
+            item.type === 'featured_products' &&
+            item.sort_order === 1,
+        ) ?? null
 
-    return { page, section }
+      return { page, secondarySection, section }
+    }
+
+    const section =
+      sections.find(
+        (item) =>
+          item.page_id === page.id &&
+          page.id.length > 0 &&
+          item.type === 'content' &&
+          item.sort_order === 0,
+      ) ?? null
+
+    return { page, secondarySection: null, section }
   })
 }
 
 export async function saveAdminInfoPage(
   input: SaveAdminInfoPageInput,
 ): Promise<void> {
+  const { data: page, error: pageError } = await supabase
+    .from('pages')
+    .upsert(
+      {
+        slug: input.slug,
+        title: input.title,
+        meta_title: input.metaTitle || input.title,
+        meta_description: input.metaDescription,
+        is_published: true,
+      },
+      { onConflict: 'slug' },
+    )
+    .select('id')
+    .single()
+
+  if (pageError) {
+    throw normalizeSupabaseError(pageError)
+  }
+
+  if (input.slug === 'home') {
+    const welcomePayload: Json = {
+      title: input.title,
+      descriptionLeft: input.descriptionLeft,
+      descriptionRight: input.descriptionRight,
+    }
+
+    if (input.catalogActionLabel.trim()) {
+      welcomePayload.actions = [
+        {
+          href: '/catalog',
+          label: input.catalogActionLabel.trim(),
+          variant: 'primary',
+        },
+      ]
+    }
+
+    const featuredLimit = Number(input.featuredLimit)
+    const featuredPayload: Json = {
+      detailsLabel: input.featuredDetailsLabel.trim() || 'Подробнее >>',
+      limit:
+        Number.isFinite(featuredLimit) && featuredLimit > 0
+          ? Math.min(Math.floor(featuredLimit), 12)
+          : 6,
+    }
+
+    if (input.featuredTitle.trim()) {
+      featuredPayload.title = input.featuredTitle.trim()
+    }
+
+    await Promise.all([
+      upsertPageSection({
+        pageId: page.id,
+        payload: welcomePayload,
+        sectionId: input.sectionId,
+        sortOrder: 0,
+        type: 'welcome',
+      }),
+      upsertPageSection({
+        pageId: page.id,
+        payload: featuredPayload,
+        sectionId: input.featuredSectionId,
+        sortOrder: 1,
+        type: 'featured_products',
+      }),
+    ])
+
+    return
+  }
+
   let imageUrl = input.imageUrl.trim()
   const imageAlt = input.imageAlt.trim() || input.title
 
@@ -324,56 +514,16 @@ export async function saveAdminInfoPage(
     }
   }
 
-  const { data: page, error: pageError } = await supabase
-    .from('pages')
-    .upsert(
-      {
-        slug: input.slug,
-        title: input.title,
-        meta_title: input.metaTitle || input.title,
-        meta_description: input.metaDescription,
-        is_published: true,
-      },
-      { onConflict: 'slug' },
-    )
-    .select('id')
-    .single()
-
-  if (pageError) {
-    throw normalizeSupabaseError(pageError)
-  }
-
-  if (input.sectionId) {
-    const { error: sectionError } = await supabase
-      .from('page_sections')
-      .update({
-        payload,
-        type: 'content',
-        is_active: true,
-      })
-      .eq('id', input.sectionId)
-
-    if (sectionError) {
-      throw normalizeSupabaseError(sectionError)
-    }
-
-    return
-  }
-
-  const { error: sectionError } = await supabase.from('page_sections').insert({
-    is_active: true,
-    page_id: page.id,
+  await upsertPageSection({
+    pageId: page.id,
     payload,
-    sort_order: 0,
+    sectionId: input.sectionId,
+    sortOrder: 0,
     type: 'content',
   })
-
-  if (sectionError) {
-    throw normalizeSupabaseError(sectionError)
-  }
 }
 
-export { parseContentSectionPayload }
+export { parseContentSectionPayload, parseFeaturedSectionPayload, parseWelcomeSectionPayload }
 
 export async function getAdminCategories(): Promise<TableRow<'categories'>[]> {
   const { data, error } = await supabase

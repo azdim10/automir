@@ -56,6 +56,19 @@ export interface ContentSectionPayload {
   map?: YandexMapPayload
 }
 
+export interface WelcomeSectionPayload {
+  title: string
+  descriptionLeft?: string
+  descriptionRight?: string
+  actions?: HomeSectionAction[]
+}
+
+export interface FeaturedProductsSectionPayload {
+  detailsLabel: string
+  limit: number
+  title?: string
+}
+
 export interface YandexMapPayload {
   title: string
   latitude: number

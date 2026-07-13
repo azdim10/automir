@@ -6,11 +6,13 @@ import type {
   ContentSectionPayload,
   FeatureGridItem,
   FeatureGridSectionPayload,
+  FeaturedProductsSectionPayload,
   HeroSectionPayload,
   HomeSectionAction,
   HomeSectionActionVariant,
   HomeSectionImage,
   ImageTextSectionPayload,
+  WelcomeSectionPayload,
   YandexMapPayload,
 } from './homeSection.types'
 
@@ -271,6 +273,69 @@ export function parseContentPayload(payload: Json): ContentSectionPayload | null
 
   if (map) {
     result.map = map
+  }
+
+  return result
+}
+
+export function parseWelcomePayload(payload: Json): WelcomeSectionPayload | null {
+  if (!isJsonRecord(payload)) {
+    return null
+  }
+
+  const title = getJsonString(payload, 'title')
+
+  if (!title) {
+    return null
+  }
+
+  const result: WelcomeSectionPayload = { title }
+  const descriptionLeft = getOptionalString(payload, 'descriptionLeft')
+  const descriptionRight = getOptionalString(payload, 'descriptionRight')
+  const actions = parseActions(payload.actions)
+
+  if (descriptionLeft) {
+    result.descriptionLeft = descriptionLeft
+  }
+
+  if (descriptionRight) {
+    result.descriptionRight = descriptionRight
+  }
+
+  if (actions) {
+    result.actions = actions
+  }
+
+  return result
+}
+
+export function parseFeaturedProductsPayload(
+  payload: Json,
+): FeaturedProductsSectionPayload | null {
+  if (!isJsonRecord(payload)) {
+    return null
+  }
+
+  const detailsLabel = getJsonString(payload, 'detailsLabel')
+  const limitValue = payload.limit
+
+  if (!detailsLabel) {
+    return null
+  }
+
+  const limit =
+    typeof limitValue === 'number' && limitValue > 0
+      ? Math.min(Math.floor(limitValue), 12)
+      : 6
+
+  const result: FeaturedProductsSectionPayload = {
+    detailsLabel,
+    limit,
+  }
+  const title = getOptionalString(payload, 'title')
+
+  if (title) {
+    result.title = title
   }
 
   return result

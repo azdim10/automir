@@ -1,5 +1,5 @@
 import { usePageContent } from '@entities/content'
-import { Container, EmptyState, Skeleton, Typography } from '@shared/ui'
+import { Container, EmptyState, Skeleton } from '@shared/ui'
 import { HomeSections } from '@widgets/home-sections'
 
 function HomePageSkeleton() {
@@ -64,11 +64,6 @@ export function HomePage() {
 
   return (
     <main>
-      <Container className="sr-only">
-        <Typography as="h1" variant="h1" weight="bold">
-          {data.page.title}
-        </Typography>
-      </Container>
       <HomeSections sections={data.sections} />
     </main>
   )

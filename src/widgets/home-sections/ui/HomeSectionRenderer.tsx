@@ -3,15 +3,19 @@ import type { PageSection } from '@entities/content'
 import {
   parseBannerPayload,
   parseContentPayload,
+  parseFeaturedProductsPayload,
   parseFeatureGridPayload,
   parseHeroPayload,
   parseImageTextPayload,
+  parseWelcomePayload,
 } from '../model/homeSectionPayload'
 import { BannerSection } from './BannerSection'
 import { ContentSection } from './ContentSection'
+import { FeaturedProductsSection } from './FeaturedProductsSection'
 import { FeatureGridSection } from './FeatureGridSection'
 import { HeroSection } from './HeroSection'
 import { ImageTextSection } from './ImageTextSection'
+import { WelcomeSection } from './WelcomeSection'
 
 interface HomeSectionRendererProps {
   section: PageSection
@@ -41,6 +45,16 @@ export function HomeSectionRenderer({ section }: HomeSectionRendererProps) {
   if (section.type === 'content') {
     const payload = parseContentPayload(section.payload)
     return payload ? <ContentSection payload={payload} /> : null
+  }
+
+  if (section.type === 'welcome') {
+    const payload = parseWelcomePayload(section.payload)
+    return payload ? <WelcomeSection payload={payload} /> : null
+  }
+
+  if (section.type === 'featured_products') {
+    const payload = parseFeaturedProductsPayload(section.payload)
+    return payload ? <FeaturedProductsSection payload={payload} /> : null
   }
 
   return null

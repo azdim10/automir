@@ -72,10 +72,13 @@ interface AdminLabels {
   callbacks: string
   category: string
   categories: string
+  catalogAction: string
   contactsPage: string
   delete: string
   deliveryPage: string
   description: string
+  descriptionLeft: string
+  descriptionRight: string
   email: string
   footer: string
   footerAddress: string
@@ -84,7 +87,11 @@ interface AdminLabels {
   footerCopyright: string
   footerEmails: string
   footerPhones: string
+  featuredDetailsLabel: string
+  featuredLimit: string
+  featuredTitle: string
   image: string
+  homePage: string
   imageAlt: string
   inactive: string
   login: string
@@ -188,10 +195,13 @@ function parseAdminLabels(value: Json | undefined): AdminLabels | null {
     'callbacks',
     'category',
     'categories',
+    'catalogAction',
     'contactsPage',
     'delete',
     'deliveryPage',
     'description',
+    'descriptionLeft',
+    'descriptionRight',
     'email',
     'footer',
     'footerAddress',
@@ -200,6 +210,10 @@ function parseAdminLabels(value: Json | undefined): AdminLabels | null {
     'footerCopyright',
     'footerEmails',
     'footerPhones',
+    'featuredDetailsLabel',
+    'featuredLimit',
+    'featuredTitle',
+    'homePage',
     'image',
     'imageAlt',
     'inactive',
