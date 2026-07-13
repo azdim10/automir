@@ -7,19 +7,21 @@ interface AddToCartButtonProps {
   product: Product
   label: string
   quantity?: number
+  successLabel?: string
 }
 
 export function AddToCartButton({
-  product,
   label,
+  product,
   quantity,
+  successLabel,
 }: AddToCartButtonProps) {
   const addToCart = useAddToCart()
 
   return (
     <Button
       onClick={() => {
-        addToCart(product, quantity)
+        addToCart(product, quantity, successLabel)
       }}
     >
       {label}

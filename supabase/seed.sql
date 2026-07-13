@@ -154,6 +154,7 @@ values
   ),
   ('product_labels', '{
     "addToCart": "Добавить в корзину",
+    "addedToCart": "Добавлено в корзину",
     "attributes": "Характеристики",
     "description": "Описание",
     "sku": "Артикул",

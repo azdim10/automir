@@ -1,5 +1,5 @@
 import type { PropsWithChildren, ReactNode } from 'react'
-import { useEffect, useId } from 'react'
+import { useEffect, useId, useReducer } from 'react'
 import { createPortal } from 'react-dom'
 
 import { cn } from '@shared/lib/styles/cn'
@@ -26,6 +26,37 @@ const sizeClassName: Record<ModalSize, string> = {
   full: 'max-w-[calc(100vw-2rem)]',
 }
 
+const MODAL_TRANSITION_MS = 220
+
+interface ModalPresenceState {
+  mounted: boolean
+  visible: boolean
+}
+
+type ModalPresenceAction =
+  | { type: 'close-end' }
+  | { type: 'close-start' }
+  | { type: 'open' }
+  | { type: 'show' }
+
+function modalPresenceReducer(
+  state: ModalPresenceState,
+  action: ModalPresenceAction,
+): ModalPresenceState {
+  switch (action.type) {
+    case 'open':
+      return { mounted: true, visible: false }
+    case 'show':
+      return { ...state, visible: true }
+    case 'close-start':
+      return { ...state, visible: false }
+    case 'close-end':
+      return { mounted: false, visible: false }
+    default:
+      return state
+  }
+}
+
 export function Modal({
   children,
   className,
@@ -40,9 +71,49 @@ export function Modal({
 }: ModalProps) {
   const titleId = useId()
   const descriptionId = useId()
+  const [presence, dispatch] = useReducer(modalPresenceReducer, {
+    mounted: false,
+    visible: false,
+  })
+
+  if (isOpen && !presence.mounted) {
+    dispatch({ type: 'open' })
+  }
+
+  if (!isOpen && presence.mounted && presence.visible) {
+    dispatch({ type: 'close-start' })
+  }
 
   useEffect(() => {
-    if (!isOpen) {
+    if (!isOpen || !presence.mounted || presence.visible) {
+      return
+    }
+
+    const frame = requestAnimationFrame(() => {
+      dispatch({ type: 'show' })
+    })
+
+    return () => {
+      cancelAnimationFrame(frame)
+    }
+  }, [isOpen, presence.mounted, presence.visible])
+
+  useEffect(() => {
+    if (isOpen || !presence.mounted || presence.visible) {
+      return
+    }
+
+    const timer = window.setTimeout(() => {
+      dispatch({ type: 'close-end' })
+    }, MODAL_TRANSITION_MS)
+
+    return () => {
+      window.clearTimeout(timer)
+    }
+  }, [isOpen, presence.mounted, presence.visible])
+
+  useEffect(() => {
+    if (!presence.mounted || !presence.visible) {
       return
     }
 
@@ -60,9 +131,9 @@ export function Modal({
       document.removeEventListener('keydown', handleKeyDown)
       document.body.style.overflow = previousOverflow
     }
-  }, [isOpen, onClose])
+  }, [onClose, presence.mounted, presence.visible])
 
-  if (!isOpen) {
+  if (!presence.mounted) {
     return null
   }
 
@@ -72,7 +143,8 @@ export function Modal({
       aria-describedby={description ? descriptionId : undefined}
       aria-modal="true"
       className={cn(
-        'fixed inset-0 z-50 grid place-items-center bg-slate-950/60 p-4',
+        'fixed inset-0 z-50 grid place-items-center p-4 transition-colors duration-200 ease-out motion-reduce:transition-none',
+        presence.visible ? 'bg-slate-950/60' : 'bg-slate-950/0',
         className,
       )}
       onMouseDown={(event) => {
@@ -84,7 +156,10 @@ export function Modal({
     >
       <div
         className={cn(
-          'w-full rounded-xl bg-white p-6 shadow-xl',
+          'w-full rounded-xl bg-white p-6 shadow-xl transition-all duration-200 ease-out motion-reduce:transition-none',
+          presence.visible
+            ? 'translate-y-0 scale-100 opacity-100'
+            : 'translate-y-2 scale-[0.98] opacity-0',
           sizeClassName[size],
           contentClassName,
         )}

@@ -9,6 +9,7 @@ import { Container, Skeleton, Typography } from '@shared/ui'
 
 interface ProductLabels {
   addToCart: string
+  addedToCart: string
   applicationArea: string
   attributes: string
   description: string
@@ -33,6 +34,7 @@ function parseProductLabels(value: Json | undefined): ProductLabels | null {
 
   const keys: (keyof ProductLabels)[] = [
     'addToCart',
+    'addedToCart',
     'applicationArea',
     'attributes',
     'description',
@@ -142,7 +144,11 @@ export function ProductDetailsPage() {
                 locale={locale}
               />
             </div>
-            <AddToCartButton label={labels.addToCart} product={product} />
+            <AddToCartButton
+              label={labels.addToCart}
+              product={product}
+              successLabel={labels.addedToCart}
+            />
           </div>
         </div>
 

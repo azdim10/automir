@@ -1,10 +1,11 @@
 import { useCartStore } from '@entities/cart'
 import type { Product } from '@entities/product'
+import { showToast } from '@shared/ui'
 
 export function useAddToCart() {
   const addItem = useCartStore((state) => state.addItem)
 
-  return (product: Product, quantity = 1) => {
+  return (product: Product, quantity = 1, successMessage?: string) => {
     const image = product.images[0]
 
     addItem({
@@ -16,6 +17,12 @@ export function useAddToCart() {
       imageUrl: image?.url ?? null,
       imageAlt: image?.alt ?? null,
       quantity,
+    })
+
+    showToast({
+      message: successMessage ?? 'Добавлено в корзину',
+      title: product.name,
+      type: 'success',
     })
   }
 }

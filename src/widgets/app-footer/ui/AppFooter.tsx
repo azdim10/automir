@@ -1,7 +1,7 @@
 import { useState, type ReactNode } from 'react'
 
 import { cn } from '@shared/lib/styles/cn'
-import { Container, Modal, Typography } from '@shared/ui'
+import { Container, Modal } from '@shared/ui'
 
 import type { FooterLabels, FooterSettings } from '../model/footerSettings'
 
@@ -24,37 +24,25 @@ function FooterContactLine({
   )
 }
 
-function FooterCertificate({
-  alt,
-  labels,
-  url,
-}: {
-  alt: string
-  labels: FooterLabels
-  url: string
-}) {
+function FooterCertificate({ alt, url }: { alt: string; url: string }) {
   const [isOpen, setIsOpen] = useState(false)
 
   return (
     <>
-      <div className="flex w-full flex-col items-center gap-1.5 lg:items-end">
-        <p className="w-full text-center text-xs font-bold text-slate-800 lg:text-right">
-          {labels.certificate}
-        </p>
-        <button
-          className="group cursor-zoom-in border-0 bg-transparent p-0"
-          type="button"
-          onClick={() => {
-            setIsOpen(true)
-          }}
-        >
-          <img
-            alt={alt}
-            className="h-auto w-[5.5rem] bg-white object-contain shadow-[0_0_0_1px_rgba(255,255,255,0.9)] transition group-hover:opacity-90 sm:w-[6.25rem]"
-            src={url}
-          />
-        </button>
-      </div>
+      <button
+        aria-label={alt}
+        className="group cursor-zoom-in border-0 bg-transparent p-0"
+        type="button"
+        onClick={() => {
+          setIsOpen(true)
+        }}
+      >
+        <img
+          alt={alt}
+          className="h-auto w-[5.5rem] bg-white object-contain shadow-[0_0_0_1px_rgba(255,255,255,0.9)] transition group-hover:opacity-90 sm:w-[6.25rem]"
+          src={url}
+        />
+      </button>
       <Modal
         closeOnOverlayClick
         contentClassName="max-h-[calc(100vh-2rem)] overflow-auto bg-transparent p-0 shadow-none"
@@ -91,27 +79,25 @@ export function AppFooter({ labels, settings }: AppFooterProps) {
       <Container className="relative">
         <div
           className={cn(
-            'grid items-start gap-6 py-6 sm:gap-8 sm:py-7',
+            'flex flex-col gap-5 py-5 sm:py-6',
             hasCertificate
-              ? 'lg:grid-cols-[minmax(0,1fr)_minmax(0,1.35fr)_auto] lg:gap-10'
-              : 'lg:grid-cols-[minmax(0,1fr)_minmax(0,1.5fr)] lg:gap-12',
+              ? 'lg:flex-row lg:items-center lg:justify-between lg:gap-8'
+              : 'lg:flex-row lg:items-center lg:justify-between lg:gap-12',
           )}
         >
-          <div className="grid gap-1">
-            <Typography
-              className="text-xs leading-5 text-slate-800"
-              variant="caption"
-            >
-              {settings.copyright}
-            </Typography>
-            <Typography
-              className="text-xs leading-5 text-slate-800"
-              variant="caption"
-            >
-              {settings.companyName}
-            </Typography>
+          <div className="shrink-0 space-y-0.5 lg:max-w-[16rem]">
+            <p className="text-xs leading-5 text-slate-800">{settings.copyright}</p>
+            <p className="text-xs leading-5 text-slate-800">{settings.companyName}</p>
           </div>
-          <div className="grid gap-1">
+
+          <div
+            className={cn(
+              'space-y-0.5',
+              hasCertificate
+                ? 'lg:flex-1 lg:px-6 xl:px-10'
+                : 'lg:flex-1 lg:px-6',
+            )}
+          >
             {settings.address ? (
               <FooterContactLine label={labels.address}>
                 {settings.address}
@@ -148,11 +134,11 @@ export function AppFooter({ labels, settings }: AppFooterProps) {
               </FooterContactLine>
             ) : null}
           </div>
+
           {hasCertificate ? (
-            <div className="justify-self-center lg:justify-self-end">
+            <div className="flex shrink-0 justify-start lg:justify-end">
               <FooterCertificate
                 alt={settings.certificateAlt}
-                labels={labels}
                 url={settings.certificateUrl ?? ''}
               />
             </div>
@@ -167,20 +153,17 @@ export function AppFooterSkeleton() {
   return (
     <footer className="bg-[#E6F2FF]">
       <Container>
-        <div className="grid gap-6 py-6 sm:py-7 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.35fr)_auto] lg:gap-10">
-          <div className="grid gap-2">
+        <div className="flex flex-col gap-5 py-5 sm:py-6 lg:flex-row lg:items-center lg:justify-between lg:gap-8">
+          <div className="space-y-2">
             <div className="h-4 w-40 animate-pulse rounded bg-slate-300/70" />
             <div className="h-4 w-48 animate-pulse rounded bg-slate-300/70" />
           </div>
-          <div className="grid gap-2">
+          <div className="flex-1 space-y-2">
             <div className="h-4 w-full max-w-xl animate-pulse rounded bg-slate-300/70" />
             <div className="h-4 w-full max-w-md animate-pulse rounded bg-slate-300/70" />
             <div className="h-4 w-full max-w-sm animate-pulse rounded bg-slate-300/70" />
           </div>
-          <div className="mx-auto grid justify-items-center gap-2 lg:mx-0 lg:justify-items-end">
-            <div className="h-4 w-20 animate-pulse rounded bg-slate-300/70" />
-            <div className="h-28 w-[5.5rem] animate-pulse rounded bg-slate-300/70" />
-          </div>
+          <div className="h-28 w-[5.5rem] shrink-0 animate-pulse rounded bg-slate-300/70" />
         </div>
       </Container>
     </footer>
