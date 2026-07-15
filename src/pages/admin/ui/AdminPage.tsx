@@ -28,6 +28,7 @@ import {
   uploadAdminFooterCertificate,
   uploadAdminSiteLogo,
   upsertAdminSiteSetting,
+  useAdminRequestsRealtime,
 } from '@entities/admin'
 import type {
   AdminInfoPageRecord,
@@ -509,6 +510,7 @@ function showAdminSaveErrorToast(error: unknown) {
 export function AdminPage() {
   const queryClient = useQueryClient()
   const { isAuthenticated, isLoading } = useAuthSession()
+  useAdminRequestsRealtime(isAuthenticated)
   const { data: siteSettings } = useSiteSettings()
   const labels = parseAdminLabels(siteSettings?.admin_labels)
   const locale =

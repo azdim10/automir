@@ -3,10 +3,12 @@ import {
   DragOverlay,
   KeyboardSensor,
   PointerSensor,
-  closestCorners,
+  pointerWithin,
+  rectIntersection,
   useDroppable,
   useSensor,
   useSensors,
+  type CollisionDetection,
   type DragEndEvent,
   type DragOverEvent,
   type DragStartEvent,
@@ -98,6 +100,58 @@ function findContainerId<T>(
   return null
 }
 
+function moveItemBetweenContainers<T>({
+  activeId,
+  activeContainer,
+  columns,
+  getItemId,
+  overContainer,
+  overId,
+}: {
+  activeId: UniqueIdentifier
+  activeContainer: RequestStatus
+  columns: RequestKanbanColumns<T>
+  getItemId: (item: T) => string
+  overContainer: RequestStatus
+  overId: UniqueIdentifier
+}): RequestKanbanColumns<T> {
+  const activeItems = [...columns[activeContainer]]
+  const overItems = [...columns[overContainer]]
+  const activeIndex = activeItems.findIndex((item) => getItemId(item) === activeId)
+
+  if (activeIndex === -1) {
+    return columns
+  }
+
+  const [movedItem] = activeItems.splice(activeIndex, 1)
+
+  if (!movedItem) {
+    return columns
+  }
+
+  const overIndex = REQUEST_STATUSES.includes(overId as RequestStatus)
+    ? overItems.length
+    : overItems.findIndex((item) => getItemId(item) === overId)
+
+  overItems.splice(overIndex >= 0 ? overIndex : overItems.length, 0, movedItem)
+
+  return {
+    ...columns,
+    [activeContainer]: activeItems,
+    [overContainer]: overItems,
+  }
+}
+
+const kanbanCollisionDetection: CollisionDetection = (args) => {
+  const pointerCollisions = pointerWithin(args)
+
+  if (pointerCollisions.length > 0) {
+    return pointerCollisions
+  }
+
+  return rectIntersection(args)
+}
+
 interface SortableRequestCardProps {
   children: ReactNode
   id: string
@@ -159,9 +213,7 @@ function RequestKanbanColumn({
       className={cn(
         'flex min-h-[18rem] min-w-[15rem] flex-1 flex-col rounded-xl border p-3 transition-colors',
         theme.columnClassName,
-        isOver ? 'ring-2 ring-slate-300' : undefined,
       )}
-      ref={setNodeRef}
     >
       <header className="mb-3 grid gap-2">
         <div className="flex items-center justify-between gap-2">
@@ -190,9 +242,17 @@ function RequestKanbanColumn({
           </Button>
         ) : null}
       </header>
-      <SortableContext items={itemIds} strategy={verticalListSortingStrategy}>
-        <div className="grid flex-1 gap-2">{children}</div>
-      </SortableContext>
+      <div
+        className={cn(
+          'grid min-h-[12rem] flex-1 gap-2 rounded-lg p-1 transition-colors',
+          isOver ? 'bg-white/60 ring-2 ring-slate-300' : undefined,
+        )}
+        ref={setNodeRef}
+      >
+        <SortableContext items={itemIds} strategy={verticalListSortingStrategy}>
+          {children}
+        </SortableContext>
+      </div>
     </section>
   )
 }
@@ -260,43 +320,27 @@ export function RequestKanbanBoard<T>({
       return
     }
 
-    const activeContainer = findContainerId(active.id, columnsRef.current, getItemId)
+    const activeContainer = findContainerId(
+      active.id,
+      columnsRef.current,
+      getItemId,
+    )
     const overContainer = findContainerId(over.id, columnsRef.current, getItemId)
 
     if (!activeContainer || !overContainer || activeContainer === overContainer) {
       return
     }
 
-    setColumnsState((() => {
-      const current = columnsRef.current
-      const activeItems = [...current[activeContainer]]
-      const overItems = [...current[overContainer]]
-      const activeIndex = activeItems.findIndex(
-        (item) => getItemId(item) === active.id,
-      )
-
-      if (activeIndex === -1) {
-        return current
-      }
-
-      const [movedItem] = activeItems.splice(activeIndex, 1)
-
-      if (!movedItem) {
-        return current
-      }
-
-      const overIndex = REQUEST_STATUSES.includes(over.id as RequestStatus)
-        ? overItems.length
-        : overItems.findIndex((item) => getItemId(item) === over.id)
-
-      overItems.splice(overIndex >= 0 ? overIndex : overItems.length, 0, movedItem)
-
-      return {
-        ...current,
-        [activeContainer]: activeItems,
-        [overContainer]: overItems,
-      }
-    })())
+    setColumnsState(
+      moveItemBetweenContainers({
+        activeId: active.id,
+        activeContainer,
+        columns: columnsRef.current,
+        getItemId,
+        overContainer,
+        overId: over.id,
+      }),
+    )
   }
 
   const handleDragEnd = ({ active, over }: DragEndEvent) => {
@@ -318,7 +362,16 @@ export function RequestKanbanBoard<T>({
 
     let nextColumns = current
 
-    if (activeContainer === overContainer) {
+    if (activeContainer !== overContainer) {
+      nextColumns = moveItemBetweenContainers({
+        activeId: active.id,
+        activeContainer,
+        columns: current,
+        getItemId,
+        overContainer,
+        overId: over.id,
+      })
+    } else {
       const items = [...current[activeContainer]]
       const activeIndex = items.findIndex((item) => getItemId(item) === active.id)
       const overIndex = REQUEST_STATUSES.includes(over.id as RequestStatus)
@@ -352,7 +405,7 @@ export function RequestKanbanBoard<T>({
 
   return (
     <DndContext
-      collisionDetection={closestCorners}
+      collisionDetection={kanbanCollisionDetection}
       sensors={sensors}
       onDragCancel={handleDragCancel}
       onDragEnd={handleDragEnd}

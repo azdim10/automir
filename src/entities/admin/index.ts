@@ -38,3 +38,4 @@ export {
   type AdminProductImageRecord,
 } from './api/adminRepository'
 export { adminQueryKeys } from './model/admin.queryKeys'
+export { useAdminRequestsRealtime } from './model/useAdminRequestsRealtime'
