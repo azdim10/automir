@@ -4,7 +4,7 @@ import { createPortal } from 'react-dom'
 
 import { cn } from '@shared/lib/styles/cn'
 
-type ModalSize = 'sm' | 'md' | 'lg' | 'xl' | 'full'
+type ModalSize = 'sm' | 'md' | 'lg' | 'xl' | 'full' | 'fit'
 
 interface ModalProps extends PropsWithChildren {
   isOpen: boolean
@@ -24,6 +24,16 @@ const sizeClassName: Record<ModalSize, string> = {
   lg: 'max-w-2xl',
   xl: 'max-w-4xl',
   full: 'max-w-[calc(100vw-2rem)]',
+  fit: 'max-w-[calc(100vw-2rem)]',
+}
+
+const widthClassName: Record<ModalSize, string> = {
+  sm: 'w-full',
+  md: 'w-full',
+  lg: 'w-full',
+  xl: 'w-full',
+  full: 'w-full',
+  fit: 'w-fit',
 }
 
 const MODAL_TRANSITION_MS = 220
@@ -156,7 +166,8 @@ export function Modal({
     >
       <div
         className={cn(
-          'w-full rounded-xl bg-white p-6 shadow-xl transition-all duration-200 ease-out motion-reduce:transition-none',
+          'rounded-xl bg-white p-6 shadow-xl transition-all duration-200 ease-out motion-reduce:transition-none',
+          widthClassName[size],
           presence.visible
             ? 'translate-y-0 scale-100 opacity-100'
             : 'translate-y-2 scale-[0.98] opacity-0',

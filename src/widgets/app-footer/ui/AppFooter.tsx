@@ -27,6 +27,10 @@ function FooterContactLine({
 function FooterCertificate({ alt, url }: { alt: string; url: string }) {
   const [isOpen, setIsOpen] = useState(false)
 
+  function closeModal() {
+    setIsOpen(false)
+  }
+
   return (
     <>
       <button
@@ -45,16 +49,22 @@ function FooterCertificate({ alt, url }: { alt: string; url: string }) {
       </button>
       <Modal
         closeOnOverlayClick
-        contentClassName="max-h-[calc(100vh-2rem)] overflow-auto bg-transparent p-0 shadow-none"
+        contentClassName="relative max-h-[calc(100vh-2rem)] overflow-auto p-2"
         isOpen={isOpen}
-        size="full"
-        onClose={() => {
-          setIsOpen(false)
-        }}
+        size="fit"
+        onClose={closeModal}
       >
+        <button
+          aria-label="Закрыть"
+          className="absolute top-2 right-2 z-10 inline-flex size-8 items-center justify-center rounded-full bg-slate-900/75 text-lg leading-none text-white transition hover:bg-slate-900"
+          type="button"
+          onClick={closeModal}
+        >
+          ×
+        </button>
         <img
           alt={alt}
-          className="mx-auto max-h-[calc(100vh-2rem)] w-auto max-w-full object-contain"
+          className="block max-h-[calc(100vh-4rem)] w-auto max-w-[calc(100vw-4rem)] object-contain"
           src={url}
         />
       </Modal>
