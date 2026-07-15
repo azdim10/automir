@@ -1335,6 +1335,42 @@ export async function getAdminOrders(): Promise<TableRow<'orders'>[]> {
   return data
 }
 
+export interface AdminOrderRecord {
+  items: TableRow<'order_items'>[]
+  order: TableRow<'orders'>
+}
+
+export async function getAdminOrdersWithDetails(): Promise<AdminOrderRecord[]> {
+  const orders = await getAdminOrders()
+
+  if (orders.length === 0) {
+    return []
+  }
+
+  const orderIds = orders.map((order) => order.id)
+  const { data: items, error: itemsError } = await supabase
+    .from('order_items')
+    .select('*')
+    .in('order_id', orderIds)
+
+  if (itemsError) {
+    throw normalizeSupabaseError(itemsError)
+  }
+
+  const itemsByOrderId = new Map<string, TableRow<'order_items'>[]>()
+
+  for (const item of items) {
+    const currentItems = itemsByOrderId.get(item.order_id) ?? []
+    currentItems.push(item)
+    itemsByOrderId.set(item.order_id, currentItems)
+  }
+
+  return orders.map((order) => ({
+    items: itemsByOrderId.get(order.id) ?? [],
+    order,
+  }))
+}
+
 export async function updateAdminOrderStatus(
   id: string,
   status: string,

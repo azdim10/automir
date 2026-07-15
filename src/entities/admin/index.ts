@@ -10,6 +10,7 @@ export {
   getAdminInfoPages,
   getAdminMediaAssets,
   getAdminOrders,
+  getAdminOrdersWithDetails,
   getAdminProducts,
   getAdminProductsWithDetails,
   getMediaAssetPublicUrl,
@@ -27,6 +28,7 @@ export {
   uploadAdminProductImage,
   upsertAdminSiteSetting,
   type AdminMediaAsset,
+  type AdminOrderRecord,
   type AdminProductImageRecord,
 } from './api/adminRepository'
 export { adminQueryKeys } from './model/admin.queryKeys'

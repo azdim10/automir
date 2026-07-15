@@ -10,7 +10,7 @@ import {
   getAdminCallbackRequests,
   getAdminCategories,
   getAdminInfoPages,
-  getAdminOrders,
+  getAdminOrdersWithDetails,
   getAdminProductsWithDetails,
   getMediaAssetPublicUrl,
   saveAdminInfoPage,
@@ -38,7 +38,6 @@ import {
   MediaImageField,
 } from '@features/media-library'
 import type { Json, TableRow } from '@shared/api/supabase'
-import { formatCurrency } from '@shared/lib/format'
 import { getJsonString, isJsonRecord } from '@shared/lib/json'
 import {
   Button,
@@ -57,6 +56,8 @@ import {
   splitMultilineValues,
 } from '@widgets/app-footer'
 import { PagesAdmin } from './PagesAdmin'
+import { RequestsAdmin } from './RequestPanels'
+import { countNewRequests } from '../lib/requestStatus'
 import {
   createEmptyProductForm,
   createProductFormFromRecord,
@@ -553,7 +554,7 @@ export function AdminPage() {
   })
   const ordersQuery = useQuery({
     queryKey: adminQueryKeys.orders(),
-    queryFn: getAdminOrders,
+    queryFn: getAdminOrdersWithDetails,
     enabled: isAuthenticated,
   })
   const callbacksQuery = useQuery({
@@ -875,6 +876,9 @@ export function AdminPage() {
   const orders = ordersQuery.data ?? []
   const callbacks = callbacksQuery.data ?? []
   const infoPages = infoPagesQuery.data ?? []
+  const newRequestsCount =
+    countNewRequests(orders.map((record) => record.order)) +
+    countNewRequests(callbacks)
 
   return (
     <main className="py-10">
@@ -905,7 +909,14 @@ export function AdminPage() {
                   setActiveTab(tab)
                 }}
               >
-                {tab === 'requests' ? labels.requests : labels.systemSettings}
+                <span className="inline-flex items-center">
+                  {tab === 'requests' ? labels.requests : labels.systemSettings}
+                  {tab === 'requests' && newRequestsCount > 0 ? (
+                    <span className="ml-1.5 inline-flex min-h-5 min-w-5 items-center justify-center rounded-full bg-red-600 px-1.5 text-[11px] font-semibold text-white">
+                      {newRequestsCount > 99 ? '99+' : newRequestsCount}
+                    </span>
+                  ) : null}
+                </span>
               </Button>
             ))}
           </div>
@@ -1550,168 +1561,3 @@ function SettingsAdmin({
   )
 }
 
-interface RequestsAdminProps {
-  activeSection: RequestsSection
-  callbacks: TableRow<'callback_requests'>[]
-  labels: AdminLabels
-  locale: string
-  orders: TableRow<'orders'>[]
-  onCallbackStatusChange: (id: string, status: string) => void
-  onOrderStatusChange: (id: string, status: string) => void
-  onSectionChange: (section: RequestsSection) => void
-}
-
-const REQUESTS_SECTIONS: {
-  id: RequestsSection
-  labelKey: keyof Pick<AdminLabels, 'orders' | 'callbacks'>
-}[] = [
-  { id: 'orders', labelKey: 'orders' },
-  { id: 'callbacks', labelKey: 'callbacks' },
-]
-
-function RequestsAdmin({
-  activeSection,
-  callbacks,
-  labels,
-  locale,
-  orders,
-  onCallbackStatusChange,
-  onOrderStatusChange,
-  onSectionChange,
-}: RequestsAdminProps) {
-  return (
-    <div className="grid gap-6">
-      <div className="flex flex-wrap gap-2">
-        {REQUESTS_SECTIONS.map((section) => (
-          <Button
-            key={section.id}
-            variant={activeSection === section.id ? 'primary' : 'outline'}
-            onClick={() => {
-              onSectionChange(section.id)
-            }}
-          >
-            {labels[section.labelKey]}
-          </Button>
-        ))}
-      </div>
-      {activeSection === 'orders' ? (
-        <OrdersAdmin
-          labels={labels}
-          locale={locale}
-          orders={orders}
-          onStatusChange={onOrderStatusChange}
-        />
-      ) : null}
-      {activeSection === 'callbacks' ? (
-        <CallbacksAdmin
-          callbacks={callbacks}
-          labels={labels}
-          locale={locale}
-          onStatusChange={onCallbackStatusChange}
-        />
-      ) : null}
-    </div>
-  )
-}
-
-interface OrdersAdminProps {
-  labels: AdminLabels
-  locale: string
-  orders: TableRow<'orders'>[]
-  onStatusChange: (id: string, status: string) => void
-}
-
-function OrdersAdmin({
-  labels,
-  locale,
-  orders,
-  onStatusChange,
-}: OrdersAdminProps) {
-  return (
-    <div className="grid gap-3">
-      {orders.map((order) => (
-        <Card key={order.id}>
-          <CardContent className="grid gap-3 md:grid-cols-[minmax(0,1fr)_14rem]">
-            <div>
-              <Typography as="h3" variant="h3" weight="semibold">
-                {order.id}
-              </Typography>
-              <Typography className="text-slate-500" variant="body-sm">
-                {order.customer_name} · {order.customer_phone}
-              </Typography>
-              <Typography variant="body-sm">
-                {formatCurrency(order.total_amount, locale)}
-              </Typography>
-            </div>
-            <Select
-              value={order.status}
-              options={[
-                { value: 'new', label: 'new' },
-                { value: 'processing', label: 'processing' },
-                { value: 'completed', label: 'completed' },
-                { value: 'cancelled', label: 'cancelled' },
-              ]}
-              onChange={(event) => {
-                onStatusChange(order.id, event.target.value)
-              }}
-            />
-            <Typography className="sr-only" variant="caption">
-              {labels.status}
-            </Typography>
-          </CardContent>
-        </Card>
-      ))}
-    </div>
-  )
-}
-
-interface CallbacksAdminProps {
-  callbacks: TableRow<'callback_requests'>[]
-  labels: AdminLabels
-  locale: string
-  onStatusChange: (id: string, status: string) => void
-}
-
-function CallbacksAdmin({
-  callbacks,
-  labels,
-  locale,
-  onStatusChange,
-}: CallbacksAdminProps) {
-  return (
-    <div className="grid gap-3">
-      {callbacks.map((callback) => (
-        <Card key={callback.id}>
-          <CardContent className="grid gap-3 md:grid-cols-[minmax(0,1fr)_14rem]">
-            <div>
-              <Typography as="h3" variant="h3" weight="semibold">
-                {callback.customer_name}
-              </Typography>
-              <Typography className="text-slate-500" variant="body-sm">
-                {callback.customer_phone}
-              </Typography>
-              <Typography className="text-slate-500" variant="body-sm">
-                {new Date(callback.created_at).toLocaleString(locale)}
-              </Typography>
-            </div>
-            <Select
-              value={callback.status}
-              options={[
-                { value: 'new', label: 'new' },
-                { value: 'processing', label: 'processing' },
-                { value: 'completed', label: 'completed' },
-                { value: 'cancelled', label: 'cancelled' },
-              ]}
-              onChange={(event) => {
-                onStatusChange(callback.id, event.target.value)
-              }}
-            />
-            <Typography className="sr-only" variant="caption">
-              {labels.status}
-            </Typography>
-          </CardContent>
-        </Card>
-      ))}
-    </div>
-  )
-}
