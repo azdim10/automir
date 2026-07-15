@@ -34,7 +34,7 @@ export function useUploadAdminMediaAsset(folderPrefix: string) {
     },
     onSuccess: async () => {
       await queryClient.invalidateQueries({
-        queryKey: adminQueryKeys.mediaAssets(),
+        queryKey: adminQueryKeys.mediaAssetsRoot(),
       })
     },
   })
@@ -45,9 +45,30 @@ export function useDeleteAdminMediaAsset() {
 
   return useMutation({
     mutationFn: deleteAdminMediaAsset,
-    onSuccess: async () => {
+    onMutate: async (assetId) => {
+      await queryClient.cancelQueries({
+        queryKey: adminQueryKeys.mediaAssetsRoot(),
+      })
+
+      const previousQueries = queryClient.getQueriesData<AdminMediaAsset[]>({
+        queryKey: adminQueryKeys.mediaAssetsRoot(),
+      })
+
+      queryClient.setQueriesData<AdminMediaAsset[]>(
+        { queryKey: adminQueryKeys.mediaAssetsRoot() },
+        (assets) => assets?.filter((asset) => asset.id !== assetId),
+      )
+
+      return { previousQueries }
+    },
+    onError: (_error, _assetId, context) => {
+      context?.previousQueries.forEach(([queryKey, data]) => {
+        queryClient.setQueryData(queryKey, data)
+      })
+    },
+    onSettled: async () => {
       await queryClient.invalidateQueries({
-        queryKey: adminQueryKeys.mediaAssets(),
+        queryKey: adminQueryKeys.mediaAssetsRoot(),
       })
     },
   })

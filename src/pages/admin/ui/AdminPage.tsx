@@ -41,6 +41,7 @@ import {
   Container,
   Input,
   Select,
+  showToast,
   Skeleton,
   Typography,
 } from '@shared/ui'
@@ -60,10 +61,9 @@ import {
 } from './ProductAdminForm'
 
 type AdminTab =
+  | 'overview'
   | 'products'
   | 'categories'
-  | 'orders'
-  | 'callbacks'
   | 'pages'
   | 'settings'
 
@@ -117,6 +117,7 @@ interface AdminLabels {
   modifications: string
   name: string
   orders: string
+  overview: string
   packingNorm: string
   pageImage: string
   pageImageAlt: string
@@ -245,6 +246,7 @@ function parseAdminLabels(value: Json | undefined): AdminLabels | null {
     'modifications',
     'name',
     'orders',
+    'overview',
     'packingNorm',
     'pageImage',
     'pageImageAlt',
@@ -400,8 +402,25 @@ function createSettingsForm(
   }
 }
 
-function getMutationErrorMessage(error: Error | null): string | null {
-  return error?.message ?? null
+function getMutationErrorMessage(error: unknown): string | null {
+  return error instanceof Error ? error.message : null
+}
+
+function showAdminSaveSuccessToast(title: string) {
+  showToast({
+    message: 'Изменения сохранены',
+    title,
+    type: 'success',
+  })
+}
+
+function showAdminSaveErrorToast(error: unknown) {
+  showToast({
+    message:
+      error instanceof Error ? error.message : 'Не удалось сохранить изменения',
+    title: 'Ошибка',
+    type: 'error',
+  })
 }
 
 export function AdminPage() {
@@ -411,7 +430,7 @@ export function AdminPage() {
   const labels = parseAdminLabels(siteSettings?.admin_labels)
   const locale =
     typeof siteSettings?.locale === 'string' ? siteSettings.locale : ''
-  const [activeTab, setActiveTab] = useState<AdminTab>('products')
+  const [activeTab, setActiveTab] = useState<AdminTab>('overview')
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [productForm, setProductForm] = useState<ProductFormState>(
@@ -459,8 +478,10 @@ export function AdminPage() {
   const saveProductMutation = useMutation({
     mutationFn: async (form: ProductFormState) => {
       await saveAdminProductWithDetails(mapProductFormToSaveInput(form))
+      return form.name
     },
-    onSuccess: () => {
+    onSuccess: (productName) => {
+      showAdminSaveSuccessToast(productName || 'Товар')
       setProductForm(createEmptyProductForm())
       void queryClient.invalidateQueries({
         queryKey: adminQueryKeys.products(),
@@ -469,6 +490,7 @@ export function AdminPage() {
         queryKey: productQueryKeys.all,
       })
     },
+    onError: showAdminSaveErrorToast,
   })
   const deleteProductMutation = useMutation({
     mutationFn: deleteAdminProduct,
@@ -511,8 +533,11 @@ export function AdminPage() {
       } else {
         await createAdminCategory(input)
       }
+
+      return form.name
     },
-    onSuccess: () => {
+    onSuccess: (categoryName) => {
+      showAdminSaveSuccessToast(categoryName || 'Категория')
       setCategoryForm(createEmptyCategoryForm())
       void queryClient.invalidateQueries({
         queryKey: adminQueryKeys.categories(),
@@ -524,6 +549,7 @@ export function AdminPage() {
         queryKey: productQueryKeys.all,
       })
     },
+    onError: showAdminSaveErrorToast,
   })
   const deleteCategoryMutation = useMutation({
     mutationFn: deleteAdminCategory,
@@ -618,6 +644,7 @@ export function AdminPage() {
       return { footerBackgroundUrl, footerCertificateUrl, logoUrl }
     },
     onSuccess: (result) => {
+      showAdminSaveSuccessToast('Настройки')
       setSettingsForm((current) => ({
         ...current,
         footerBackgroundFile: null,
@@ -632,10 +659,12 @@ export function AdminPage() {
         queryKey: contentQueryKeys.all,
       })
     },
+    onError: showAdminSaveErrorToast,
   })
   const saveInfoPageMutation = useMutation({
     mutationFn: saveAdminInfoPage,
-    onSuccess: () => {
+    onSuccess: (_data, input) => {
+      showAdminSaveSuccessToast(input.title || 'Страница')
       void queryClient.invalidateQueries({
         queryKey: adminQueryKeys.infoPages(),
       })
@@ -646,6 +675,7 @@ export function AdminPage() {
         queryKey: productQueryKeys.all,
       })
     },
+    onError: showAdminSaveErrorToast,
   })
 
   if (isLoading || !labels || !locale) {
@@ -721,10 +751,9 @@ export function AdminPage() {
           <div className="flex flex-wrap gap-2">
             {(
               [
+                'overview',
                 'products',
                 'categories',
-                'orders',
-                'callbacks',
                 'pages',
                 'settings',
               ] as const
@@ -744,6 +773,20 @@ export function AdminPage() {
               ),
             )}
           </div>
+          {activeTab === 'overview' ? (
+            <OverviewAdmin
+              callbacks={callbacks}
+              labels={labels}
+              locale={locale}
+              orders={orders}
+              onCallbackStatusChange={(id, status) => {
+                updateCallbackMutation.mutate({ id, status })
+              }}
+              onOrderStatusChange={(id, status) => {
+                updateOrderMutation.mutate({ id, status })
+              }}
+            />
+          ) : null}
           {activeTab === 'products' ? (
             <div className="grid gap-6 lg:grid-cols-[28rem_minmax(0,1fr)]">
               <ProductAdminForm
@@ -792,26 +835,6 @@ export function AdminPage() {
               onSubmit={(event) => {
                 event.preventDefault()
                 saveCategoryMutation.mutate(categoryForm)
-              }}
-            />
-          ) : null}
-          {activeTab === 'orders' ? (
-            <OrdersAdmin
-              labels={labels}
-              locale={locale}
-              orders={orders}
-              onStatusChange={(id, status) => {
-                updateOrderMutation.mutate({ id, status })
-              }}
-            />
-          ) : null}
-          {activeTab === 'callbacks' ? (
-            <CallbacksAdmin
-              callbacks={callbacks}
-              labels={labels}
-              locale={locale}
-              onStatusChange={(id, status) => {
-                updateCallbackMutation.mutate({ id, status })
               }}
             />
           ) : null}
@@ -1235,6 +1258,51 @@ function SettingsAdmin({
         </form>
       </CardContent>
     </Card>
+  )
+}
+
+interface OverviewAdminProps {
+  callbacks: TableRow<'callback_requests'>[]
+  labels: AdminLabels
+  locale: string
+  orders: TableRow<'orders'>[]
+  onCallbackStatusChange: (id: string, status: string) => void
+  onOrderStatusChange: (id: string, status: string) => void
+}
+
+function OverviewAdmin({
+  callbacks,
+  labels,
+  locale,
+  orders,
+  onCallbackStatusChange,
+  onOrderStatusChange,
+}: OverviewAdminProps) {
+  return (
+    <div className="grid gap-8">
+      <section className="grid gap-4">
+        <Typography as="h2" variant="h2" weight="semibold">
+          {labels.orders}
+        </Typography>
+        <OrdersAdmin
+          labels={labels}
+          locale={locale}
+          orders={orders}
+          onStatusChange={onOrderStatusChange}
+        />
+      </section>
+      <section className="grid gap-4">
+        <Typography as="h2" variant="h2" weight="semibold">
+          {labels.callbacks}
+        </Typography>
+        <CallbacksAdmin
+          callbacks={callbacks}
+          labels={labels}
+          locale={locale}
+          onStatusChange={onCallbackStatusChange}
+        />
+      </section>
+    </div>
   )
 }
 
