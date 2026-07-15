@@ -68,7 +68,7 @@ export function normalizeRequestStatus(status: string): RequestStatus {
 export function groupRequestsByStatus<T>(
   items: T[],
   getStatus: (item: T) => string,
-  getCreatedAt: (item: T) => string = () => '',
+  getSortOrder: (item: T) => number = () => 0,
 ): Record<RequestStatus, T[]> {
   const grouped = Object.fromEntries(
     REQUEST_STATUSES.map((status) => [status, [] as T[]]),
@@ -81,12 +81,17 @@ export function groupRequestsByStatus<T>(
 
   for (const status of REQUEST_STATUSES) {
     grouped[status] = [...grouped[status]].sort(
-      (left, right) =>
-        new Date(getCreatedAt(right)).getTime() - new Date(getCreatedAt(left)).getTime(),
+      (left, right) => getSortOrder(left) - getSortOrder(right),
     )
   }
 
   return grouped
+}
+
+export interface RequestReorderUpdate {
+  id: string
+  sort_order: number
+  status: RequestStatus
 }
 
 export function countNewRequests<T extends { status: string }>(items: T[]): number {

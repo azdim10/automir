@@ -1299,6 +1299,7 @@ export async function getAdminCallbackRequests(): Promise<
   const { data, error } = await supabase
     .from('callback_requests')
     .select('*')
+    .order('sort_order', { ascending: true })
     .order('created_at', { ascending: false })
 
   if (error) {
@@ -1322,10 +1323,52 @@ export async function updateAdminCallbackRequestStatus(
   }
 }
 
+export async function deleteAdminCallbackRequest(id: string): Promise<void> {
+  const { error } = await supabase
+    .from('callback_requests')
+    .delete()
+    .eq('id', id)
+
+  if (error) {
+    throw normalizeSupabaseError(error)
+  }
+}
+
+export async function deleteAdminCancelledCallbackRequests(): Promise<void> {
+  const { error } = await supabase
+    .from('callback_requests')
+    .delete()
+    .eq('status', 'cancelled')
+
+  if (error) {
+    throw normalizeSupabaseError(error)
+  }
+}
+
+export async function reorderAdminCallbackRequests(
+  updates: Array<{ id: string; sort_order: number; status: string }>,
+): Promise<void> {
+  const results = await Promise.all(
+    updates.map(({ id, sort_order, status }) =>
+      supabase
+        .from('callback_requests')
+        .update({ sort_order, status })
+        .eq('id', id),
+    ),
+  )
+
+  const error = results.find((result) => result.error)?.error
+
+  if (error) {
+    throw normalizeSupabaseError(error)
+  }
+}
+
 export async function getAdminOrders(): Promise<TableRow<'orders'>[]> {
   const { data, error } = await supabase
     .from('orders')
     .select('*')
+    .order('sort_order', { ascending: true })
     .order('created_at', { ascending: false })
 
   if (error) {
@@ -1379,6 +1422,44 @@ export async function updateAdminOrderStatus(
     .from('orders')
     .update({ status })
     .eq('id', id)
+
+  if (error) {
+    throw normalizeSupabaseError(error)
+  }
+}
+
+export async function deleteAdminOrder(id: string): Promise<void> {
+  const { error } = await supabase
+    .from('orders')
+    .delete()
+    .eq('id', id)
+
+  if (error) {
+    throw normalizeSupabaseError(error)
+  }
+}
+
+export async function deleteAdminCancelledOrders(): Promise<void> {
+  const { error } = await supabase
+    .from('orders')
+    .delete()
+    .eq('status', 'cancelled')
+
+  if (error) {
+    throw normalizeSupabaseError(error)
+  }
+}
+
+export async function reorderAdminOrders(
+  updates: Array<{ id: string; sort_order: number; status: string }>,
+): Promise<void> {
+  const results = await Promise.all(
+    updates.map(({ id, sort_order, status }) =>
+      supabase.from('orders').update({ sort_order, status }).eq('id', id),
+    ),
+  )
+
+  const error = results.find((result) => result.error)?.error
 
   if (error) {
     throw normalizeSupabaseError(error)

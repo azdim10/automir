@@ -4,7 +4,11 @@ import { useEffect, useState, type Dispatch, type SetStateAction, type Synthetic
 import {
   adminQueryKeys,
   createAdminCategory,
+  deleteAdminCancelledCallbackRequests,
+  deleteAdminCancelledOrders,
+  deleteAdminCallbackRequest,
   deleteAdminCategory,
+  deleteAdminOrder,
   deleteAdminProduct,
   deleteAdminProductImage,
   getAdminCallbackRequests,
@@ -13,6 +17,8 @@ import {
   getAdminOrdersWithDetails,
   getAdminProductsWithDetails,
   getMediaAssetPublicUrl,
+  reorderAdminCallbackRequests,
+  reorderAdminOrders,
   saveAdminInfoPage,
   saveAdminProductWithDetails,
   updateAdminCallbackRequestStatus,
@@ -680,6 +686,48 @@ export function AdminPage() {
       })
     },
   })
+  const deleteOrderMutation = useMutation({
+    mutationFn: deleteAdminOrder,
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: adminQueryKeys.orders() })
+    },
+  })
+  const deleteCallbackMutation = useMutation({
+    mutationFn: deleteAdminCallbackRequest,
+    onSuccess: () => {
+      void queryClient.invalidateQueries({
+        queryKey: adminQueryKeys.callbacks(),
+      })
+    },
+  })
+  const clearCancelledOrdersMutation = useMutation({
+    mutationFn: deleteAdminCancelledOrders,
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: adminQueryKeys.orders() })
+    },
+  })
+  const clearCancelledCallbacksMutation = useMutation({
+    mutationFn: deleteAdminCancelledCallbackRequests,
+    onSuccess: () => {
+      void queryClient.invalidateQueries({
+        queryKey: adminQueryKeys.callbacks(),
+      })
+    },
+  })
+  const reorderOrdersMutation = useMutation({
+    mutationFn: reorderAdminOrders,
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: adminQueryKeys.orders() })
+    },
+  })
+  const reorderCallbacksMutation = useMutation({
+    mutationFn: reorderAdminCallbackRequests,
+    onSuccess: () => {
+      void queryClient.invalidateQueries({
+        queryKey: adminQueryKeys.callbacks(),
+      })
+    },
+  })
   const saveSettingsMutation = useMutation({
     mutationFn: async (form: SiteSettingsFormState) => {
       const siteProfile = isJsonRecord(siteSettings?.site_profile)
@@ -927,8 +975,26 @@ export function AdminPage() {
               labels={labels}
               locale={locale}
               orders={orders}
+              onCallbackDelete={(id) => {
+                deleteCallbackMutation.mutate(id)
+              }}
+              onCallbackReorder={(updates) => {
+                reorderCallbacksMutation.mutate(updates)
+              }}
               onCallbackStatusChange={(id, status) => {
                 updateCallbackMutation.mutate({ id, status })
+              }}
+              onClearCancelledCallbacks={() => {
+                clearCancelledCallbacksMutation.mutate()
+              }}
+              onClearCancelledOrders={() => {
+                clearCancelledOrdersMutation.mutate()
+              }}
+              onOrderDelete={(id) => {
+                deleteOrderMutation.mutate(id)
+              }}
+              onOrderReorder={(updates) => {
+                reorderOrdersMutation.mutate(updates)
               }}
               onOrderStatusChange={(id, status) => {
                 updateOrderMutation.mutate({ id, status })

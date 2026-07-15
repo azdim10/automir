@@ -192,6 +192,7 @@ export interface Database {
           customer_name: string
           customer_phone: string
           created_at: string
+          sort_order: number
         }
         Insert: {
           id?: string
@@ -199,6 +200,7 @@ export interface Database {
           customer_name: string
           customer_phone: string
           created_at?: string
+          sort_order?: number
         }
         Update: {
           id?: string
@@ -206,6 +208,7 @@ export interface Database {
           customer_name?: string
           customer_phone?: string
           created_at?: string
+          sort_order?: number
         }
         Relationships: []
       }
@@ -438,6 +441,7 @@ export interface Database {
           total_amount: number
           currency: string
           created_at: string
+          sort_order: number
         }
         Insert: {
           id?: string
@@ -449,6 +453,7 @@ export interface Database {
           total_amount: number
           currency: string
           created_at?: string
+          sort_order?: number
         }
         Update: {
           id?: string
@@ -460,6 +465,7 @@ export interface Database {
           total_amount?: number
           currency?: string
           created_at?: string
+          sort_order?: number
         }
         Relationships: []
       }

@@ -1,4 +1,4 @@
-import { useMemo, useState, type ReactNode } from 'react'
+import { useMemo, useState, type PointerEvent } from 'react'
 
 import type { AdminOrderRecord } from '@entities/admin'
 import type { TableRow } from '@shared/api/supabase'
@@ -19,12 +19,14 @@ import {
   getRequestStatusBadgeClassName,
   getRequestStatusLabel,
   groupRequestsByStatus,
-  REQUEST_STATUS_LABELS,
   REQUEST_STATUS_OPTIONS,
-  REQUEST_STATUSES,
-  REQUEST_STATUS_THEME,
-  type RequestStatus,
+  type RequestReorderUpdate,
 } from '../lib/requestStatus'
+import { RequestKanbanBoard } from './RequestKanbanBoard'
+
+function stopDragPointer(event: PointerEvent) {
+  event.stopPropagation()
+}
 
 function RequestCountBadge({ count }: { count: number }) {
   if (count <= 0) {
@@ -51,77 +53,24 @@ function RequestStatusBadge({ status }: { status: string }) {
   )
 }
 
-interface RequestKanbanColumnProps {
-  children: ReactNode
-  count: number
-  status: RequestStatus
-}
-
-function RequestKanbanColumn({ children, count, status }: RequestKanbanColumnProps) {
-  const theme = REQUEST_STATUS_THEME[status]
-
-  return (
-    <section
-      className={cn(
-        'flex min-h-[18rem] min-w-[15rem] flex-1 flex-col rounded-xl border p-3',
-        theme.columnClassName,
-      )}
-    >
-      <header className="mb-3 flex items-center justify-between gap-2">
-        <div className="flex items-center gap-2">
-          <span className={cn('size-2.5 rounded-full', theme.dotClassName)} />
-          <Typography as="h3" variant="body-sm" weight="semibold">
-            {REQUEST_STATUS_LABELS[status]}
-          </Typography>
-        </div>
-        <span
-          className={cn(
-            'inline-flex min-h-5 min-w-5 items-center justify-center rounded-full px-1.5 text-[11px] font-semibold',
-            theme.badgeClassName,
-          )}
-        >
-          {count}
-        </span>
-      </header>
-      <div className="grid flex-1 gap-2">{children}</div>
-    </section>
-  )
-}
-
-interface RequestKanbanBoardProps {
-  children: (status: RequestStatus) => ReactNode
-  getColumnCount: (status: RequestStatus) => number
-}
-
-function RequestKanbanBoard({ children, getColumnCount }: RequestKanbanBoardProps) {
-  return (
-    <div className="overflow-x-auto pb-1">
-      <div className="flex min-w-full gap-4">
-        {REQUEST_STATUSES.map((status) => (
-          <RequestKanbanColumn
-            count={getColumnCount(status)}
-            key={status}
-            status={status}
-          >
-            {children(status)}
-          </RequestKanbanColumn>
-        ))}
-      </div>
-    </div>
-  )
-}
-
 interface RequestsAdminProps {
   callbacks: TableRow<'callback_requests'>[]
   labels: {
     callbacks: string
+    delete: string
     orders: string
     status: string
   }
   locale: string
   orders: AdminOrderRecord[]
   activeSection: 'orders' | 'callbacks'
+  onCallbackDelete: (id: string) => void
+  onCallbackReorder: (updates: RequestReorderUpdate[]) => void
   onCallbackStatusChange: (id: string, status: string) => void
+  onClearCancelledCallbacks: () => void
+  onClearCancelledOrders: () => void
+  onOrderDelete: (id: string) => void
+  onOrderReorder: (updates: RequestReorderUpdate[]) => void
   onOrderStatusChange: (id: string, status: string) => void
   onSectionChange: (section: 'orders' | 'callbacks') => void
 }
@@ -132,7 +81,13 @@ export function RequestsAdmin({
   labels,
   locale,
   orders,
+  onCallbackDelete,
+  onCallbackReorder,
   onCallbackStatusChange,
+  onClearCancelledCallbacks,
+  onClearCancelledOrders,
+  onOrderDelete,
+  onOrderReorder,
   onOrderStatusChange,
   onSectionChange,
 }: RequestsAdminProps) {
@@ -170,17 +125,25 @@ export function RequestsAdmin({
       </div>
       {activeSection === 'orders' ? (
         <OrdersAdmin
+          deleteLabel={labels.delete}
           labels={labels}
           locale={locale}
           orders={orders}
+          onClearCancelled={onClearCancelledOrders}
+          onDelete={onOrderDelete}
+          onReorder={onOrderReorder}
           onStatusChange={onOrderStatusChange}
         />
       ) : null}
       {activeSection === 'callbacks' ? (
         <CallbacksAdmin
           callbacks={callbacks}
+          deleteLabel={labels.delete}
           labels={labels}
           locale={locale}
+          onClearCancelled={onClearCancelledCallbacks}
+          onDelete={onCallbackDelete}
+          onReorder={onCallbackReorder}
           onStatusChange={onCallbackStatusChange}
         />
       ) : null}
@@ -189,22 +152,35 @@ export function RequestsAdmin({
 }
 
 interface OrdersAdminProps {
+  deleteLabel: string
   labels: {
     status: string
   }
   locale: string
   orders: AdminOrderRecord[]
+  onClearCancelled: () => void
+  onDelete: (id: string) => void
+  onReorder: (updates: RequestReorderUpdate[]) => void
   onStatusChange: (id: string, status: string) => void
 }
 
-function OrdersAdmin({ labels, locale, orders, onStatusChange }: OrdersAdminProps) {
+function OrdersAdmin({
+  deleteLabel,
+  labels,
+  locale,
+  orders,
+  onClearCancelled,
+  onDelete,
+  onReorder,
+  onStatusChange,
+}: OrdersAdminProps) {
   const [selectedOrder, setSelectedOrder] = useState<AdminOrderRecord | null>(null)
   const groupedOrders = useMemo(
     () =>
       groupRequestsByStatus(
         orders,
         (record) => record.order.status,
-        (record) => record.order.created_at,
+        (record) => record.order.sort_order,
       ),
     [orders],
   )
@@ -212,59 +188,74 @@ function OrdersAdmin({ labels, locale, orders, onStatusChange }: OrdersAdminProp
   return (
     <>
       <RequestKanbanBoard
-        getColumnCount={(status) => groupedOrders[status].length}
-      >
-        {(status) =>
-          groupedOrders[status].map((record) => (
-            <Card
-              className={cn('transition-colors', getRequestCardClassName(record.order.status))}
-              key={record.order.id}
-            >
-              <CardContent className="grid gap-3 p-3">
-                <button
-                  className="grid gap-1 text-left"
-                  type="button"
-                  onClick={() => {
-                    setSelectedOrder(record)
-                  }}
-                >
-                  <div className="flex flex-wrap items-center gap-2">
-                    <Typography as="h3" variant="body" weight="semibold">
-                      {record.order.customer_name}
-                    </Typography>
-                    <RequestStatusBadge status={record.order.status} />
-                  </div>
-                  <Typography className="text-slate-500" variant="body-sm">
-                    {record.order.customer_phone}
+        clearCancelledLabel="Очистить все"
+        getItemId={(record) => record.order.id}
+        itemsByStatus={groupedOrders}
+        onClearCancelled={onClearCancelled}
+        onReorder={onReorder}
+        renderCard={(record) => (
+          <Card
+            className={cn('transition-colors', getRequestCardClassName(record.order.status))}
+          >
+            <CardContent className="grid gap-3 p-3">
+              <button
+                className="grid gap-1 text-left"
+                type="button"
+                onClick={() => {
+                  setSelectedOrder(record)
+                }}
+                onPointerDown={stopDragPointer}
+              >
+                <div className="flex flex-wrap items-center gap-2">
+                  <Typography as="h3" variant="body" weight="semibold">
+                    {record.order.customer_name}
                   </Typography>
-                  <Typography variant="body-sm" weight="semibold">
-                    {formatCurrency(record.order.total_amount, locale)}
-                  </Typography>
-                  <Typography className="text-slate-400" variant="caption">
-                    {new Date(record.order.created_at).toLocaleString(locale)}
-                  </Typography>
-                </button>
+                  <RequestStatusBadge status={record.order.status} />
+                </div>
+                <Typography className="text-slate-500" variant="body-sm">
+                  {record.order.customer_phone}
+                </Typography>
+                <Typography variant="body-sm" weight="semibold">
+                  {formatCurrency(record.order.total_amount, locale)}
+                </Typography>
+                <Typography className="text-slate-400" variant="caption">
+                  {new Date(record.order.created_at).toLocaleString(locale)}
+                </Typography>
+              </button>
+              <div onPointerDown={stopDragPointer}>
                 <Select
                   aria-label={labels.status}
                   value={record.order.status}
                   options={REQUEST_STATUS_OPTIONS}
-                  onClick={(event) => {
-                    event.stopPropagation()
-                  }}
                   onChange={(event) => {
                     onStatusChange(record.order.id, event.target.value)
                   }}
                 />
-              </CardContent>
-            </Card>
-          ))
-        }
-      </RequestKanbanBoard>
+              </div>
+              <Button
+                className="h-8"
+                variant="outline"
+                onClick={() => {
+                  onDelete(record.order.id)
+                }}
+                onPointerDown={stopDragPointer}
+              >
+                {deleteLabel}
+              </Button>
+            </CardContent>
+          </Card>
+        )}
+      />
       <OrderDetailsModal
+        deleteLabel={deleteLabel}
         isOpen={selectedOrder !== null}
         locale={locale}
         record={selectedOrder}
         onClose={() => {
+          setSelectedOrder(null)
+        }}
+        onDelete={(id) => {
+          onDelete(id)
           setSelectedOrder(null)
         }}
         onStatusChange={onStatusChange}
@@ -274,18 +265,22 @@ function OrdersAdmin({ labels, locale, orders, onStatusChange }: OrdersAdminProp
 }
 
 interface OrderDetailsModalProps {
+  deleteLabel: string
   isOpen: boolean
   locale: string
   record: AdminOrderRecord | null
   onClose: () => void
+  onDelete: (id: string) => void
   onStatusChange: (id: string, status: string) => void
 }
 
 function OrderDetailsModal({
+  deleteLabel,
   isOpen,
   locale,
   record,
   onClose,
+  onDelete,
   onStatusChange,
 }: OrderDetailsModalProps) {
   if (!record) {
@@ -367,7 +362,15 @@ function OrderDetailsModal({
         <Typography as="p" variant="body" weight="semibold">
           Итого: {formatCurrency(order.total_amount, locale)}
         </Typography>
-        <div className="flex justify-end">
+        <div className="flex flex-wrap justify-end gap-2">
+          <Button
+            variant="outline"
+            onClick={() => {
+              onDelete(order.id)
+            }}
+          >
+            {deleteLabel}
+          </Button>
           <Button variant="outline" onClick={onClose}>
             Закрыть
           </Button>
@@ -379,17 +382,25 @@ function OrderDetailsModal({
 
 interface CallbacksAdminProps {
   callbacks: TableRow<'callback_requests'>[]
+  deleteLabel: string
   labels: {
     status: string
   }
   locale: string
+  onClearCancelled: () => void
+  onDelete: (id: string) => void
+  onReorder: (updates: RequestReorderUpdate[]) => void
   onStatusChange: (id: string, status: string) => void
 }
 
 function CallbacksAdmin({
   callbacks,
+  deleteLabel,
   labels,
   locale,
+  onClearCancelled,
+  onDelete,
+  onReorder,
   onStatusChange,
 }: CallbacksAdminProps) {
   const [selectedCallback, setSelectedCallback] =
@@ -399,7 +410,7 @@ function CallbacksAdmin({
       groupRequestsByStatus(
         callbacks,
         (callback) => callback.status,
-        (callback) => callback.created_at,
+        (callback) => callback.sort_order,
       ),
     [callbacks],
   )
@@ -407,56 +418,71 @@ function CallbacksAdmin({
   return (
     <>
       <RequestKanbanBoard
-        getColumnCount={(status) => groupedCallbacks[status].length}
-      >
-        {(status) =>
-          groupedCallbacks[status].map((callback) => (
-            <Card
-              className={cn('transition-colors', getRequestCardClassName(callback.status))}
-              key={callback.id}
-            >
-              <CardContent className="grid gap-3 p-3">
-                <button
-                  className="grid gap-1 text-left"
-                  type="button"
-                  onClick={() => {
-                    setSelectedCallback(callback)
-                  }}
-                >
-                  <div className="flex flex-wrap items-center gap-2">
-                    <Typography as="h3" variant="body" weight="semibold">
-                      {callback.customer_name}
-                    </Typography>
-                    <RequestStatusBadge status={callback.status} />
-                  </div>
-                  <Typography className="text-slate-500" variant="body-sm">
-                    {callback.customer_phone}
+        clearCancelledLabel="Очистить все"
+        getItemId={(callback) => callback.id}
+        itemsByStatus={groupedCallbacks}
+        onClearCancelled={onClearCancelled}
+        onReorder={onReorder}
+        renderCard={(callback) => (
+          <Card
+            className={cn('transition-colors', getRequestCardClassName(callback.status))}
+          >
+            <CardContent className="grid gap-3 p-3">
+              <button
+                className="grid gap-1 text-left"
+                type="button"
+                onClick={() => {
+                  setSelectedCallback(callback)
+                }}
+                onPointerDown={stopDragPointer}
+              >
+                <div className="flex flex-wrap items-center gap-2">
+                  <Typography as="h3" variant="body" weight="semibold">
+                    {callback.customer_name}
                   </Typography>
-                  <Typography className="text-slate-400" variant="caption">
-                    {new Date(callback.created_at).toLocaleString(locale)}
-                  </Typography>
-                </button>
+                  <RequestStatusBadge status={callback.status} />
+                </div>
+                <Typography className="text-slate-500" variant="body-sm">
+                  {callback.customer_phone}
+                </Typography>
+                <Typography className="text-slate-400" variant="caption">
+                  {new Date(callback.created_at).toLocaleString(locale)}
+                </Typography>
+              </button>
+              <div onPointerDown={stopDragPointer}>
                 <Select
                   aria-label={labels.status}
                   value={callback.status}
                   options={REQUEST_STATUS_OPTIONS}
-                  onClick={(event) => {
-                    event.stopPropagation()
-                  }}
                   onChange={(event) => {
                     onStatusChange(callback.id, event.target.value)
                   }}
                 />
-              </CardContent>
-            </Card>
-          ))
-        }
-      </RequestKanbanBoard>
+              </div>
+              <Button
+                className="h-8"
+                variant="outline"
+                onClick={() => {
+                  onDelete(callback.id)
+                }}
+                onPointerDown={stopDragPointer}
+              >
+                {deleteLabel}
+              </Button>
+            </CardContent>
+          </Card>
+        )}
+      />
       <CallbackDetailsModal
         callback={selectedCallback}
+        deleteLabel={deleteLabel}
         isOpen={selectedCallback !== null}
         locale={locale}
         onClose={() => {
+          setSelectedCallback(null)
+        }}
+        onDelete={(id) => {
+          onDelete(id)
           setSelectedCallback(null)
         }}
         onStatusChange={onStatusChange}
@@ -467,17 +493,21 @@ function CallbacksAdmin({
 
 interface CallbackDetailsModalProps {
   callback: TableRow<'callback_requests'> | null
+  deleteLabel: string
   isOpen: boolean
   locale: string
   onClose: () => void
+  onDelete: (id: string) => void
   onStatusChange: (id: string, status: string) => void
 }
 
 function CallbackDetailsModal({
   callback,
+  deleteLabel,
   isOpen,
   locale,
   onClose,
+  onDelete,
   onStatusChange,
 }: CallbackDetailsModalProps) {
   if (!callback) {
@@ -521,7 +551,15 @@ function CallbackDetailsModal({
             }}
           />
         </div>
-        <div className="flex justify-end">
+        <div className="flex flex-wrap justify-end gap-2">
+          <Button
+            variant="outline"
+            onClick={() => {
+              onDelete(callback.id)
+            }}
+          >
+            {deleteLabel}
+          </Button>
           <Button variant="outline" onClick={onClose}>
             Закрыть
           </Button>
