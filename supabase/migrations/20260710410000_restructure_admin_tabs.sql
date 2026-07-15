@@ -1,7 +1,8 @@
 update public.site_settings
-set value = value
+set value = (value - 'overview')
   || '{
-    "overview": "Главная",
+    "requests": "Заявки и заказы",
+    "systemSettings": "Системные настройки",
     "settings": "Настройки сайта"
   }'::jsonb,
     updated_at = now()

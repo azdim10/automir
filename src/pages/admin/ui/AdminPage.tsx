@@ -22,6 +22,11 @@ import {
   uploadAdminSiteLogo,
   upsertAdminSiteSetting,
 } from '@entities/admin'
+import type {
+  AdminInfoPageRecord,
+  AdminProductRecord,
+  SaveAdminInfoPageInput,
+} from '@entities/admin/api/adminRepository'
 import { signInWithEmail, signOut, useAuthSession } from '@entities/auth'
 import { categoryQueryKeys } from '@entities/category'
 import { useSiteSettings } from '@entities/content'
@@ -60,12 +65,9 @@ import {
   type ProductFormState,
 } from './ProductAdminForm'
 
-type AdminTab =
-  | 'overview'
-  | 'products'
-  | 'categories'
-  | 'pages'
-  | 'settings'
+type AdminTab = 'requests' | 'system'
+
+type SystemSection = 'site' | 'products' | 'categories' | 'pages'
 
 interface AdminLabels {
   aboutPage: string
@@ -117,7 +119,6 @@ interface AdminLabels {
   modifications: string
   name: string
   orders: string
-  overview: string
   packingNorm: string
   pageImage: string
   pageImageAlt: string
@@ -130,6 +131,7 @@ interface AdminLabels {
   products: string
   productType: string
   removeRow: string
+  requests: string
   save: string
   sectionText: string
   seoDescription: string
@@ -149,6 +151,7 @@ interface AdminLabels {
   storeAddress: string
   storeName: string
   storePhone: string
+  systemSettings: string
   telegram: string
   vk: string
   warrantyPage: string
@@ -246,7 +249,6 @@ function parseAdminLabels(value: Json | undefined): AdminLabels | null {
     'modifications',
     'name',
     'orders',
-    'overview',
     'packingNorm',
     'pageImage',
     'pageImageAlt',
@@ -259,6 +261,7 @@ function parseAdminLabels(value: Json | undefined): AdminLabels | null {
     'products',
     'productType',
     'removeRow',
+    'requests',
     'save',
     'sectionText',
     'seoDescription',
@@ -278,6 +281,7 @@ function parseAdminLabels(value: Json | undefined): AdminLabels | null {
     'storeAddress',
     'storeName',
     'storePhone',
+    'systemSettings',
     'telegram',
     'vk',
     'warrantyPage',
@@ -430,7 +434,9 @@ export function AdminPage() {
   const labels = parseAdminLabels(siteSettings?.admin_labels)
   const locale =
     typeof siteSettings?.locale === 'string' ? siteSettings.locale : ''
-  const [activeTab, setActiveTab] = useState<AdminTab>('overview')
+  const [activeTab, setActiveTab] = useState<AdminTab>('requests')
+  const [activeSystemSection, setActiveSystemSection] =
+    useState<SystemSection>('site')
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [productForm, setProductForm] = useState<ProductFormState>(
@@ -749,31 +755,22 @@ export function AdminPage() {
             </Button>
           </div>
           <div className="flex flex-wrap gap-2">
-            {(
-              [
-                'overview',
-                'products',
-                'categories',
-                'pages',
-                'settings',
-              ] as const
-            ).map((tab) => (
-                <Button
-                  key={tab}
-                  variant={activeTab === tab ? 'primary' : 'outline'}
-                  onClick={() => {
-                    if (tab === 'settings') {
-                      setSettingsForm(createSettingsForm(siteSettings))
-                    }
-                    setActiveTab(tab)
-                  }}
-                >
-                  {labels[tab]}
-                </Button>
-              ),
-            )}
+            {(['requests', 'system'] as const).map((tab) => (
+              <Button
+                key={tab}
+                variant={activeTab === tab ? 'primary' : 'outline'}
+                onClick={() => {
+                  if (tab === 'system') {
+                    setSettingsForm(createSettingsForm(siteSettings))
+                  }
+                  setActiveTab(tab)
+                }}
+              >
+                {tab === 'requests' ? labels.requests : labels.systemSettings}
+              </Button>
+            ))}
           </div>
-          {activeTab === 'overview' ? (
+          {activeTab === 'requests' ? (
             <OverviewAdmin
               callbacks={callbacks}
               labels={labels}
@@ -787,83 +784,213 @@ export function AdminPage() {
               }}
             />
           ) : null}
-          {activeTab === 'products' ? (
-            <div className="grid gap-6 lg:grid-cols-[28rem_minmax(0,1fr)]">
-              <ProductAdminForm
-                categories={categories}
-                errorMessage={
-                  getMutationErrorMessage(saveProductMutation.error) ??
-                  getMutationErrorMessage(deleteProductImageMutation.error)
-                }
-                form={productForm}
-                labels={labels}
-                setForm={setProductForm}
-                onDeleteImage={(imageId) => {
-                  deleteProductImageMutation.mutate(imageId)
-                }}
-                onSubmit={(event) => {
-                  event.preventDefault()
-                  saveProductMutation.mutate(productForm)
-                }}
-              />
-              <ProductAdminList
-                errorMessage={getMutationErrorMessage(deleteProductMutation.error)}
-                labels={labels}
-                products={products}
-                onDelete={(id) => {
-                  deleteProductMutation.mutate(id)
-                }}
-                onEdit={(record) => {
-                  setProductForm(createProductFormFromRecord(record))
-                }}
-              />
-            </div>
-          ) : null}
-          {activeTab === 'categories' ? (
-            <CategoriesAdmin
+          {activeTab === 'system' ? (
+            <SystemAdmin
+              activeSection={activeSystemSection}
               categories={categories}
-              errorMessage={
-                getMutationErrorMessage(saveCategoryMutation.error) ??
-                getMutationErrorMessage(deleteCategoryMutation.error)
-              }
-              form={categoryForm}
+              categoryForm={categoryForm}
+              deleteCategoryError={getMutationErrorMessage(
+                deleteCategoryMutation.error,
+              )}
+              deleteProductError={getMutationErrorMessage(
+                deleteProductMutation.error,
+              )}
+              deleteProductImageError={getMutationErrorMessage(
+                deleteProductImageMutation.error,
+              )}
+              infoPages={infoPages}
               labels={labels}
-              setForm={setCategoryForm}
-              onDelete={(id) => {
+              productForm={productForm}
+              products={products}
+              saveCategoryError={getMutationErrorMessage(
+                saveCategoryMutation.error,
+              )}
+              saveInfoPageError={getMutationErrorMessage(
+                saveInfoPageMutation.error,
+              )}
+              saveProductError={getMutationErrorMessage(
+                saveProductMutation.error,
+              )}
+              saveSettingsError={getMutationErrorMessage(
+                saveSettingsMutation.error,
+              )}
+              settingsForm={settingsForm}
+              setCategoryForm={setCategoryForm}
+              setProductForm={setProductForm}
+              setSettingsForm={setSettingsForm}
+              onDeleteCategory={(id) => {
                 deleteCategoryMutation.mutate(id)
               }}
-              onSubmit={(event) => {
+              onDeleteProduct={(id) => {
+                deleteProductMutation.mutate(id)
+              }}
+              onDeleteProductImage={(imageId) => {
+                deleteProductImageMutation.mutate(imageId)
+              }}
+              onEditProduct={(record) => {
+                setProductForm(createProductFormFromRecord(record))
+              }}
+              onSaveCategory={(event) => {
                 event.preventDefault()
                 saveCategoryMutation.mutate(categoryForm)
               }}
-            />
-          ) : null}
-          {activeTab === 'pages' ? (
-            <PagesAdmin
-              errorMessage={getMutationErrorMessage(saveInfoPageMutation.error)}
-              infoPages={infoPages}
-              labels={labels}
-              products={products.map((record) => record.product)}
-              onSave={(input) => {
+              onSaveInfoPage={(input) => {
                 saveInfoPageMutation.mutate(input)
               }}
-            />
-          ) : null}
-          {activeTab === 'settings' ? (
-            <SettingsAdmin
-              errorMessage={getMutationErrorMessage(saveSettingsMutation.error)}
-              form={settingsForm}
-              labels={labels}
-              setForm={setSettingsForm}
-              onSubmit={(event) => {
+              onSaveProduct={(event) => {
+                event.preventDefault()
+                saveProductMutation.mutate(productForm)
+              }}
+              onSaveSettings={(event) => {
                 event.preventDefault()
                 saveSettingsMutation.mutate(settingsForm)
               }}
+              onSectionChange={setActiveSystemSection}
             />
           ) : null}
         </div>
       </Container>
     </main>
+  )
+}
+
+const SYSTEM_SECTIONS: {
+  id: SystemSection
+  labelKey: keyof Pick<
+    AdminLabels,
+    'settings' | 'products' | 'categories' | 'pages'
+  >
+}[] = [
+  { id: 'site', labelKey: 'settings' },
+  { id: 'products', labelKey: 'products' },
+  { id: 'categories', labelKey: 'categories' },
+  { id: 'pages', labelKey: 'pages' },
+]
+
+interface SystemAdminProps {
+  activeSection: SystemSection
+  categories: TableRow<'categories'>[]
+  categoryForm: CategoryFormState
+  deleteCategoryError: string | null
+  deleteProductError: string | null
+  deleteProductImageError: string | null
+  infoPages: AdminInfoPageRecord[]
+  labels: AdminLabels
+  productForm: ProductFormState
+  products: AdminProductRecord[]
+  saveCategoryError: string | null
+  saveInfoPageError: string | null
+  saveProductError: string | null
+  saveSettingsError: string | null
+  settingsForm: SiteSettingsFormState
+  setCategoryForm: (form: CategoryFormState) => void
+  setProductForm: Dispatch<SetStateAction<ProductFormState>>
+  setSettingsForm: Dispatch<SetStateAction<SiteSettingsFormState>>
+  onDeleteCategory: (id: string) => void
+  onDeleteProduct: (id: string) => void
+  onDeleteProductImage: (imageId: string) => void
+  onEditProduct: (record: AdminProductRecord) => void
+  onSaveCategory: (event: SyntheticEvent<HTMLFormElement>) => void
+  onSaveInfoPage: (input: SaveAdminInfoPageInput) => void
+  onSaveProduct: (event: SyntheticEvent<HTMLFormElement>) => void
+  onSaveSettings: (event: SyntheticEvent<HTMLFormElement>) => void
+  onSectionChange: (section: SystemSection) => void
+}
+
+function SystemAdmin({
+  activeSection,
+  categories,
+  categoryForm,
+  deleteCategoryError,
+  deleteProductError,
+  deleteProductImageError,
+  infoPages,
+  labels,
+  productForm,
+  products,
+  saveCategoryError,
+  saveInfoPageError,
+  saveProductError,
+  saveSettingsError,
+  settingsForm,
+  setCategoryForm,
+  setProductForm,
+  setSettingsForm,
+  onDeleteCategory,
+  onDeleteProduct,
+  onDeleteProductImage,
+  onEditProduct,
+  onSaveCategory,
+  onSaveInfoPage,
+  onSaveProduct,
+  onSaveSettings,
+  onSectionChange,
+}: SystemAdminProps) {
+  return (
+    <div className="grid gap-6">
+      <div className="flex flex-wrap gap-2">
+        {SYSTEM_SECTIONS.map((section) => (
+          <Button
+            key={section.id}
+            variant={activeSection === section.id ? 'primary' : 'outline'}
+            onClick={() => {
+              onSectionChange(section.id)
+            }}
+          >
+            {labels[section.labelKey]}
+          </Button>
+        ))}
+      </div>
+      {activeSection === 'site' ? (
+        <SettingsAdmin
+          errorMessage={saveSettingsError}
+          form={settingsForm}
+          labels={labels}
+          setForm={setSettingsForm}
+          onSubmit={onSaveSettings}
+        />
+      ) : null}
+      {activeSection === 'products' ? (
+        <div className="grid gap-6 lg:grid-cols-[28rem_minmax(0,1fr)]">
+          <ProductAdminForm
+            categories={categories}
+            errorMessage={saveProductError ?? deleteProductImageError}
+            form={productForm}
+            labels={labels}
+            setForm={setProductForm}
+            onDeleteImage={onDeleteProductImage}
+            onSubmit={onSaveProduct}
+          />
+          <ProductAdminList
+            errorMessage={deleteProductError}
+            labels={labels}
+            products={products}
+            onDelete={onDeleteProduct}
+            onEdit={onEditProduct}
+          />
+        </div>
+      ) : null}
+      {activeSection === 'categories' ? (
+        <CategoriesAdmin
+          categories={categories}
+          errorMessage={saveCategoryError ?? deleteCategoryError}
+          form={categoryForm}
+          labels={labels}
+          setForm={setCategoryForm}
+          onDelete={onDeleteCategory}
+          onSubmit={onSaveCategory}
+        />
+      ) : null}
+      {activeSection === 'pages' ? (
+        <PagesAdmin
+          errorMessage={saveInfoPageError}
+          infoPages={infoPages}
+          labels={labels}
+          products={products.map((record) => record.product)}
+          onSave={onSaveInfoPage}
+        />
+      ) : null}
+    </div>
   )
 }
 
