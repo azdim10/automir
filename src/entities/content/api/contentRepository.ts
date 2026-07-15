@@ -7,6 +7,7 @@ import {
   mapSiteSettings,
 } from '../model/content.mappers'
 import type { PageContent, SiteSettings } from '../model/content.types'
+import { resolveSiteSettingsMedia } from '../lib/resolveSiteSettingsMedia'
 
 export async function getSiteSettings(): Promise<SiteSettings> {
   const { data, error } = await supabase
@@ -18,7 +19,9 @@ export async function getSiteSettings(): Promise<SiteSettings> {
     throw normalizeSupabaseError(error)
   }
 
-  return mapSiteSettings(data)
+  const settings = mapSiteSettings(data)
+
+  return resolveSiteSettingsMedia(settings)
 }
 
 export async function getPageContent(slug: string): Promise<PageContent> {

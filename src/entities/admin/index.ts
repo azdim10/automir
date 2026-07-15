@@ -12,6 +12,7 @@ export {
   getAdminOrders,
   getAdminProducts,
   getAdminProductsWithDetails,
+  getMediaAssetPublicUrl,
   linkAdminProductImageFromAsset,
   saveAdminInfoPage,
   saveAdminProductWithDetails,

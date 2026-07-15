@@ -142,14 +142,12 @@ export async function uploadAdminSiteLogo({
 }: {
   alt: string
   file: File
-}): Promise<string> {
-  const image = await uploadAdminImage({
+}): Promise<UploadedAdminImage> {
+  return uploadAdminImage({
     alt,
     file,
     folder: 'settings/logo',
   })
-
-  return image.publicUrl
 }
 
 export async function uploadAdminFooterBackground({
@@ -158,14 +156,12 @@ export async function uploadAdminFooterBackground({
 }: {
   alt: string
   file: File
-}): Promise<string> {
-  const image = await uploadAdminImage({
+}): Promise<UploadedAdminImage> {
+  return uploadAdminImage({
     alt,
     file,
     folder: 'settings/footer',
   })
-
-  return image.publicUrl
 }
 
 export async function uploadAdminFooterCertificate({
@@ -174,14 +170,51 @@ export async function uploadAdminFooterCertificate({
 }: {
   alt: string
   file: File
-}): Promise<string> {
-  const image = await uploadAdminImage({
+}): Promise<UploadedAdminImage> {
+  return uploadAdminImage({
     alt,
     file,
     folder: 'settings/footer-certificate',
   })
+}
 
-  return image.publicUrl
+export async function getMediaAssetPublicUrl(
+  assetId: string,
+): Promise<string | null> {
+  const { data, error } = await supabase
+    .from('media_assets')
+    .select('public_url')
+    .eq('id', assetId)
+    .maybeSingle()
+
+  if (error) {
+    throw normalizeSupabaseError(error)
+  }
+
+  return data?.public_url ?? null
+}
+
+async function isMediaAssetUsedInSiteSettings(assetId: string): Promise<boolean> {
+  const { data, error } = await supabase
+    .from('site_settings')
+    .select('value')
+    .in('key', ['site_profile', 'footer_settings'])
+
+  if (error) {
+    throw normalizeSupabaseError(error)
+  }
+
+  return (data ?? []).some((row) => {
+    if (!isJsonRecord(row.value)) {
+      return false
+    }
+
+    return (
+      getJsonString(row.value, 'logoAssetId') === assetId ||
+      getJsonString(row.value, 'backgroundAssetId') === assetId ||
+      getJsonString(row.value, 'certificateAssetId') === assetId
+    )
+  })
 }
 
 export interface AdminInfoPageRecord {
@@ -1060,16 +1093,18 @@ export async function uploadAdminProductImage({
 }
 
 async function getMediaAssetUsageCount(assetId: string): Promise<number> {
-  const [productImagesResult, categoriesResult] = await Promise.all([
-    supabase
-      .from('product_images')
-      .select('id', { count: 'exact', head: true })
-      .eq('asset_id', assetId),
-    supabase
-      .from('categories')
-      .select('id', { count: 'exact', head: true })
-      .eq('image_asset_id', assetId),
-  ])
+  const [productImagesResult, categoriesResult, usedInSiteSettings] =
+    await Promise.all([
+      supabase
+        .from('product_images')
+        .select('id', { count: 'exact', head: true })
+        .eq('asset_id', assetId),
+      supabase
+        .from('categories')
+        .select('id', { count: 'exact', head: true })
+        .eq('image_asset_id', assetId),
+      isMediaAssetUsedInSiteSettings(assetId),
+    ])
 
   if (productImagesResult.error) {
     throw normalizeSupabaseError(productImagesResult.error)
@@ -1079,7 +1114,11 @@ async function getMediaAssetUsageCount(assetId: string): Promise<number> {
     throw normalizeSupabaseError(categoriesResult.error)
   }
 
-  return (productImagesResult.count ?? 0) + (categoriesResult.count ?? 0)
+  return (
+    (productImagesResult.count ?? 0) +
+    (categoriesResult.count ?? 0) +
+    (usedInSiteSettings ? 1 : 0)
+  )
 }
 
 async function removeMediaAssetById(assetId: string): Promise<void> {

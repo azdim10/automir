@@ -1,5 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { useState, type Dispatch, type SetStateAction, type SyntheticEvent } from 'react'
+import { useEffect, useState, type Dispatch, type SetStateAction, type SyntheticEvent } from 'react'
 
 import {
   adminQueryKeys,
@@ -12,6 +12,7 @@ import {
   getAdminInfoPages,
   getAdminOrders,
   getAdminProductsWithDetails,
+  getMediaAssetPublicUrl,
   saveAdminInfoPage,
   saveAdminProductWithDetails,
   updateAdminCallbackRequestStatus,
@@ -66,6 +67,8 @@ import {
 } from './ProductAdminForm'
 
 type AdminTab = 'requests' | 'system'
+
+type RequestsSection = 'orders' | 'callbacks'
 
 type SystemSection = 'site' | 'products' | 'categories' | 'pages'
 
@@ -170,17 +173,23 @@ interface SiteSettingsFormState {
   email: string
   footerAddress: string
   footerBackgroundAlt: string
+  footerBackgroundAssetId: string | null
   footerBackgroundFile: File | null
+  footerBackgroundImageTouched: boolean
   footerBackgroundUrl: string
   footerCertificateAlt: string
+  footerCertificateAssetId: string | null
   footerCertificateFile: File | null
+  footerCertificateImageTouched: boolean
   footerCertificateUrl: string
   footerCompanyName: string
   footerCopyright: string
   footerEmails: string
   footerPhones: string
   logoAlt: string
+  logoAssetId: string | null
   logoFile: File | null
+  logoImageTouched: boolean
   logoUrl: string
   max: string
   seoDescription: string
@@ -191,6 +200,57 @@ interface SiteSettingsFormState {
   phone: string
   vk: string
   whatsapp: string
+}
+
+interface ResolvedSiteImageField {
+  assetId: string | null
+  url: string
+}
+
+async function resolveSiteImageField({
+  assetId,
+  existingAssetId,
+  existingUrl,
+  file,
+  touched,
+  upload,
+}: {
+  assetId: string | null
+  existingAssetId: string | null
+  existingUrl: string
+  file: File | null
+  touched: boolean
+  upload: (file: File) => Promise<{ assetId: string; publicUrl: string }>
+}): Promise<ResolvedSiteImageField> {
+  if (file) {
+    const uploaded = await upload(file)
+
+    return {
+      assetId: uploaded.assetId,
+      url: uploaded.publicUrl,
+    }
+  }
+
+  if (!touched) {
+    return {
+      assetId: existingAssetId,
+      url: existingUrl,
+    }
+  }
+
+  if (!assetId) {
+    return {
+      assetId: null,
+      url: '',
+    }
+  }
+
+  const resolvedUrl = (await getMediaAssetPublicUrl(assetId)) ?? ''
+
+  return {
+    assetId,
+    url: resolvedUrl,
+  }
 }
 
 function parseAdminLabels(value: Json | undefined): AdminLabels | null {
@@ -366,14 +426,22 @@ function createSettingsForm(
     footerBackgroundAlt: footerSettings
       ? (getJsonString(footerSettings, 'backgroundAlt') ?? 'Фон футера')
       : 'Фон футера',
+    footerBackgroundAssetId: footerSettings
+      ? (getJsonString(footerSettings, 'backgroundAssetId') ?? null)
+      : null,
     footerBackgroundFile: null,
+    footerBackgroundImageTouched: false,
     footerBackgroundUrl: footerSettings
       ? (getJsonString(footerSettings, 'backgroundUrl') ?? '')
       : '',
     footerCertificateAlt: footerSettings
       ? (getJsonString(footerSettings, 'certificateAlt') ?? 'Сертификат')
       : 'Сертификат',
+    footerCertificateAssetId: footerSettings
+      ? (getJsonString(footerSettings, 'certificateAssetId') ?? null)
+      : null,
     footerCertificateFile: null,
+    footerCertificateImageTouched: false,
     footerCertificateUrl: footerSettings
       ? (getJsonString(footerSettings, 'certificateUrl') ?? '')
       : '',
@@ -386,7 +454,11 @@ function createSettingsForm(
     footerEmails: joinMultilineValues(footerEmails),
     footerPhones: joinMultilineValues(footerPhones),
     logoAlt: siteProfile ? (getJsonString(siteProfile, 'logoAlt') ?? '') : '',
+    logoAssetId: siteProfile
+      ? (getJsonString(siteProfile, 'logoAssetId') ?? null)
+      : null,
     logoFile: null,
+    logoImageTouched: false,
     logoUrl: siteProfile ? (getJsonString(siteProfile, 'logoUrl') ?? '') : '',
     max: socialLinks ? (getJsonString(socialLinks, 'max') ?? '') : '',
     phone: siteProfile ? (getJsonString(siteProfile, 'phone') ?? '') : '',
@@ -435,6 +507,8 @@ export function AdminPage() {
   const locale =
     typeof siteSettings?.locale === 'string' ? siteSettings.locale : ''
   const [activeTab, setActiveTab] = useState<AdminTab>('requests')
+  const [activeRequestsSection, setActiveRequestsSection] =
+    useState<RequestsSection>('orders')
   const [activeSystemSection, setActiveSystemSection] =
     useState<SystemSection>('site')
   const [email, setEmail] = useState('')
@@ -448,6 +522,24 @@ export function AdminPage() {
   const [settingsForm, setSettingsForm] = useState<SiteSettingsFormState>(() =>
     createSettingsForm(siteSettings),
   )
+
+  useEffect(() => {
+    if (!siteSettings) {
+      return
+    }
+
+    setSettingsForm((current) => {
+      if (
+        current.storeName.trim().length > 0 ||
+        current.logoUrl.trim().length > 0 ||
+        current.logoAssetId
+      ) {
+        return current
+      }
+
+      return createSettingsForm(siteSettings)
+    })
+  }, [siteSettings])
 
   const categoriesQuery = useQuery({
     queryKey: adminQueryKeys.categories(),
@@ -589,37 +681,69 @@ export function AdminPage() {
   })
   const saveSettingsMutation = useMutation({
     mutationFn: async (form: SiteSettingsFormState) => {
-      let logoUrl = form.logoUrl.trim()
-      let footerBackgroundUrl = form.footerBackgroundUrl.trim()
-      let footerCertificateUrl = form.footerCertificateUrl.trim()
+      const siteProfile = isJsonRecord(siteSettings?.site_profile)
+        ? siteSettings.site_profile
+        : undefined
+      const footerSettings = isJsonRecord(siteSettings?.footer_settings)
+        ? siteSettings.footer_settings
+        : undefined
 
-      if (form.logoFile) {
-        logoUrl = await uploadAdminSiteLogo({
-          alt: form.logoAlt || form.storeName || 'Logo',
-          file: form.logoFile,
-        })
-      }
-
-      if (form.footerBackgroundFile) {
-        footerBackgroundUrl = await uploadAdminFooterBackground({
-          alt: form.footerBackgroundAlt || 'Footer background',
-          file: form.footerBackgroundFile,
-        })
-      }
-
-      if (form.footerCertificateFile) {
-        footerCertificateUrl = await uploadAdminFooterCertificate({
-          alt: form.footerCertificateAlt || 'Certificate',
-          file: form.footerCertificateFile,
-        })
-      }
+      const logo = await resolveSiteImageField({
+        assetId: form.logoAssetId,
+        existingAssetId: siteProfile
+          ? (getJsonString(siteProfile, 'logoAssetId') ?? null)
+          : null,
+        existingUrl: siteProfile
+          ? (getJsonString(siteProfile, 'logoUrl') ?? '')
+          : '',
+        file: form.logoFile,
+        touched: form.logoImageTouched,
+        upload: (file) =>
+          uploadAdminSiteLogo({
+            alt: form.logoAlt || form.storeName || 'Logo',
+            file,
+          }),
+      })
+      const footerBackground = await resolveSiteImageField({
+        assetId: form.footerBackgroundAssetId,
+        existingAssetId: footerSettings
+          ? (getJsonString(footerSettings, 'backgroundAssetId') ?? null)
+          : null,
+        existingUrl: footerSettings
+          ? (getJsonString(footerSettings, 'backgroundUrl') ?? '')
+          : '',
+        file: form.footerBackgroundFile,
+        touched: form.footerBackgroundImageTouched,
+        upload: (file) =>
+          uploadAdminFooterBackground({
+            alt: form.footerBackgroundAlt || 'Footer background',
+            file,
+          }),
+      })
+      const footerCertificate = await resolveSiteImageField({
+        assetId: form.footerCertificateAssetId,
+        existingAssetId: footerSettings
+          ? (getJsonString(footerSettings, 'certificateAssetId') ?? null)
+          : null,
+        existingUrl: footerSettings
+          ? (getJsonString(footerSettings, 'certificateUrl') ?? '')
+          : '',
+        file: form.footerCertificateFile,
+        touched: form.footerCertificateImageTouched,
+        upload: (file) =>
+          uploadAdminFooterCertificate({
+            alt: form.footerCertificateAlt || 'Certificate',
+            file,
+          }),
+      })
 
       await Promise.all([
         upsertAdminSiteSetting('site_profile', {
           address: form.address,
           email: form.email,
           logoAlt: form.logoAlt,
-          logoUrl,
+          logoAssetId: logo.assetId,
+          logoUrl: logo.url,
           phone: form.phone,
           storeName: form.storeName,
         }),
@@ -637,9 +761,11 @@ export function AdminPage() {
         upsertAdminSiteSetting('footer_settings', {
           address: form.footerAddress,
           backgroundAlt: form.footerBackgroundAlt,
-          backgroundUrl: footerBackgroundUrl,
+          backgroundAssetId: footerBackground.assetId,
+          backgroundUrl: footerBackground.url,
           certificateAlt: form.footerCertificateAlt,
-          certificateUrl: footerCertificateUrl,
+          certificateAssetId: footerCertificate.assetId,
+          certificateUrl: footerCertificate.url,
           companyName: form.footerCompanyName,
           copyright: form.footerCopyright,
           emails: splitMultilineValues(form.footerEmails),
@@ -647,17 +773,30 @@ export function AdminPage() {
         }),
       ])
 
-      return { footerBackgroundUrl, footerCertificateUrl, logoUrl }
+      return {
+        footerBackgroundAssetId: footerBackground.assetId,
+        footerBackgroundUrl: footerBackground.url,
+        footerCertificateAssetId: footerCertificate.assetId,
+        footerCertificateUrl: footerCertificate.url,
+        logoAssetId: logo.assetId,
+        logoUrl: logo.url,
+      }
     },
     onSuccess: (result) => {
       showAdminSaveSuccessToast('Настройки')
       setSettingsForm((current) => ({
         ...current,
+        footerBackgroundAssetId: result.footerBackgroundAssetId,
         footerBackgroundFile: null,
+        footerBackgroundImageTouched: false,
         footerBackgroundUrl: result.footerBackgroundUrl,
+        footerCertificateAssetId: result.footerCertificateAssetId,
         footerCertificateFile: null,
+        footerCertificateImageTouched: false,
         footerCertificateUrl: result.footerCertificateUrl,
+        logoAssetId: result.logoAssetId,
         logoFile: null,
+        logoImageTouched: false,
         logoUrl: result.logoUrl,
       }))
       void queryClient.invalidateQueries()
@@ -771,7 +910,8 @@ export function AdminPage() {
             ))}
           </div>
           {activeTab === 'requests' ? (
-            <OverviewAdmin
+            <RequestsAdmin
+              activeSection={activeRequestsSection}
               callbacks={callbacks}
               labels={labels}
               locale={locale}
@@ -782,6 +922,7 @@ export function AdminPage() {
               onOrderStatusChange={(id, status) => {
                 updateOrderMutation.mutate({ id, status })
               }}
+              onSectionChange={setActiveRequestsSection}
             />
           ) : null}
           {activeTab === 'system' ? (
@@ -1172,18 +1313,27 @@ function SettingsAdmin({
               onClear={() => {
                 setForm((current) => ({
                   ...current,
+                  logoAssetId: null,
                   logoFile: null,
+                  logoImageTouched: true,
                   logoUrl: '',
                 }))
               }}
               onFileChange={(file) => {
-                setForm((current) => ({ ...current, logoFile: file }))
+                setForm((current) => ({
+                  ...current,
+                  logoAssetId: null,
+                  logoFile: file,
+                  logoImageTouched: true,
+                }))
               }}
               onLibrarySelect={(asset) => {
                 setForm((current) => ({
                   ...current,
                   logoAlt: current.logoAlt || asset.alt,
+                  logoAssetId: asset.id,
                   logoFile: null,
+                  logoImageTouched: true,
                   logoUrl: asset.publicUrl,
                 }))
               }}
@@ -1291,21 +1441,27 @@ function SettingsAdmin({
               onClear={() => {
                 setForm((current) => ({
                   ...current,
+                  footerBackgroundAssetId: null,
                   footerBackgroundFile: null,
+                  footerBackgroundImageTouched: true,
                   footerBackgroundUrl: '',
                 }))
               }}
               onFileChange={(file) => {
                 setForm((current) => ({
                   ...current,
+                  footerBackgroundAssetId: null,
                   footerBackgroundFile: file,
+                  footerBackgroundImageTouched: true,
                 }))
               }}
               onLibrarySelect={(asset) => {
                 setForm((current) => ({
                   ...current,
                   footerBackgroundAlt: current.footerBackgroundAlt || asset.alt,
+                  footerBackgroundAssetId: asset.id,
                   footerBackgroundFile: null,
+                  footerBackgroundImageTouched: true,
                   footerBackgroundUrl: asset.publicUrl,
                 }))
               }}
@@ -1330,21 +1486,27 @@ function SettingsAdmin({
               onClear={() => {
                 setForm((current) => ({
                   ...current,
+                  footerCertificateAssetId: null,
                   footerCertificateFile: null,
+                  footerCertificateImageTouched: true,
                   footerCertificateUrl: '',
                 }))
               }}
               onFileChange={(file) => {
                 setForm((current) => ({
                   ...current,
+                  footerCertificateAssetId: null,
                   footerCertificateFile: file,
+                  footerCertificateImageTouched: true,
                 }))
               }}
               onLibrarySelect={(asset) => {
                 setForm((current) => ({
                   ...current,
                   footerCertificateAlt: current.footerCertificateAlt || asset.alt,
+                  footerCertificateAssetId: asset.id,
                   footerCertificateFile: null,
+                  footerCertificateImageTouched: true,
                   footerCertificateUrl: asset.publicUrl,
                 }))
               }}
@@ -1388,47 +1550,66 @@ function SettingsAdmin({
   )
 }
 
-interface OverviewAdminProps {
+interface RequestsAdminProps {
+  activeSection: RequestsSection
   callbacks: TableRow<'callback_requests'>[]
   labels: AdminLabels
   locale: string
   orders: TableRow<'orders'>[]
   onCallbackStatusChange: (id: string, status: string) => void
   onOrderStatusChange: (id: string, status: string) => void
+  onSectionChange: (section: RequestsSection) => void
 }
 
-function OverviewAdmin({
+const REQUESTS_SECTIONS: {
+  id: RequestsSection
+  labelKey: keyof Pick<AdminLabels, 'orders' | 'callbacks'>
+}[] = [
+  { id: 'orders', labelKey: 'orders' },
+  { id: 'callbacks', labelKey: 'callbacks' },
+]
+
+function RequestsAdmin({
+  activeSection,
   callbacks,
   labels,
   locale,
   orders,
   onCallbackStatusChange,
   onOrderStatusChange,
-}: OverviewAdminProps) {
+  onSectionChange,
+}: RequestsAdminProps) {
   return (
-    <div className="grid gap-8">
-      <section className="grid gap-4">
-        <Typography as="h2" variant="h2" weight="semibold">
-          {labels.orders}
-        </Typography>
+    <div className="grid gap-6">
+      <div className="flex flex-wrap gap-2">
+        {REQUESTS_SECTIONS.map((section) => (
+          <Button
+            key={section.id}
+            variant={activeSection === section.id ? 'primary' : 'outline'}
+            onClick={() => {
+              onSectionChange(section.id)
+            }}
+          >
+            {labels[section.labelKey]}
+          </Button>
+        ))}
+      </div>
+      {activeSection === 'orders' ? (
         <OrdersAdmin
           labels={labels}
           locale={locale}
           orders={orders}
           onStatusChange={onOrderStatusChange}
         />
-      </section>
-      <section className="grid gap-4">
-        <Typography as="h2" variant="h2" weight="semibold">
-          {labels.callbacks}
-        </Typography>
+      ) : null}
+      {activeSection === 'callbacks' ? (
         <CallbacksAdmin
           callbacks={callbacks}
           labels={labels}
           locale={locale}
           onStatusChange={onCallbackStatusChange}
         />
-      </section>
+      ) : null}
     </div>
   )
 }
