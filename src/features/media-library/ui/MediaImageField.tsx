@@ -21,10 +21,9 @@ interface MediaImageFieldProps {
   imageClassName?: string
   labels: MediaImageFieldLabels
   onAltChange: (value: string) => void
-  onAssetSelect?: (asset: AdminMediaAsset) => void
   onClear: () => void
   onFileChange: (file: File | null) => void
-  onUrlChange: (url: string) => void
+  onLibrarySelect: (asset: AdminMediaAsset) => void
   url: string
 }
 
@@ -36,10 +35,9 @@ export function MediaImageField({
   imageClassName = 'h-40 w-full max-w-xl rounded-lg object-contain object-left',
   labels,
   onAltChange,
-  onAssetSelect,
   onClear,
   onFileChange,
-  onUrlChange,
+  onLibrarySelect,
   url,
 }: MediaImageFieldProps) {
   const [isLibraryOpen, setIsLibraryOpen] = useState(false)
@@ -116,9 +114,7 @@ export function MediaImageField({
           setIsLibraryOpen(false)
         }}
         onSelect={(asset) => {
-          onUrlChange(asset.publicUrl)
-          onFileChange(null)
-          onAssetSelect?.(asset)
+          onLibrarySelect(asset)
         }}
       />
     </div>

@@ -1,5 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { useState, type SyntheticEvent } from 'react'
+import { useState, type Dispatch, type SetStateAction, type SyntheticEvent } from 'react'
 
 import {
   adminQueryKeys,
@@ -958,7 +958,7 @@ interface SettingsAdminProps {
   errorMessage: string | null
   form: SiteSettingsFormState
   labels: AdminLabels
-  setForm: (form: SiteSettingsFormState) => void
+  setForm: Dispatch<SetStateAction<SiteSettingsFormState>>
   onSubmit: (event: SyntheticEvent<HTMLFormElement>) => void
 }
 
@@ -1017,24 +1017,25 @@ function SettingsAdmin({
               labels={defaultMediaImageFieldLabels}
               url={form.logoUrl}
               onAltChange={(value) => {
-                setForm({ ...form, logoAlt: value })
+                setForm((current) => ({ ...current, logoAlt: value }))
               }}
               onClear={() => {
-                setForm({
-                  ...form,
+                setForm((current) => ({
+                  ...current,
                   logoFile: null,
                   logoUrl: '',
-                })
+                }))
               }}
               onFileChange={(file) => {
-                setForm({ ...form, logoFile: file })
+                setForm((current) => ({ ...current, logoFile: file }))
               }}
-              onUrlChange={(url) => {
-                setForm({
-                  ...form,
+              onLibrarySelect={(asset) => {
+                setForm((current) => ({
+                  ...current,
+                  logoAlt: current.logoAlt || asset.alt,
                   logoFile: null,
-                  logoUrl: url,
-                })
+                  logoUrl: asset.publicUrl,
+                }))
               }}
             />
           </div>
@@ -1132,24 +1133,31 @@ function SettingsAdmin({
               labels={defaultMediaImageFieldLabels}
               url={form.footerBackgroundUrl}
               onAltChange={(value) => {
-                setForm({ ...form, footerBackgroundAlt: value })
+                setForm((current) => ({
+                  ...current,
+                  footerBackgroundAlt: value,
+                }))
               }}
               onClear={() => {
-                setForm({
-                  ...form,
+                setForm((current) => ({
+                  ...current,
                   footerBackgroundFile: null,
                   footerBackgroundUrl: '',
-                })
+                }))
               }}
               onFileChange={(file) => {
-                setForm({ ...form, footerBackgroundFile: file })
+                setForm((current) => ({
+                  ...current,
+                  footerBackgroundFile: file,
+                }))
               }}
-              onUrlChange={(url) => {
-                setForm({
-                  ...form,
+              onLibrarySelect={(asset) => {
+                setForm((current) => ({
+                  ...current,
+                  footerBackgroundAlt: current.footerBackgroundAlt || asset.alt,
                   footerBackgroundFile: null,
-                  footerBackgroundUrl: url,
-                })
+                  footerBackgroundUrl: asset.publicUrl,
+                }))
               }}
             />
             <Typography as="h3" variant="body" weight="semibold">
@@ -1164,24 +1172,31 @@ function SettingsAdmin({
               labels={defaultMediaImageFieldLabels}
               url={form.footerCertificateUrl}
               onAltChange={(value) => {
-                setForm({ ...form, footerCertificateAlt: value })
+                setForm((current) => ({
+                  ...current,
+                  footerCertificateAlt: value,
+                }))
               }}
               onClear={() => {
-                setForm({
-                  ...form,
+                setForm((current) => ({
+                  ...current,
                   footerCertificateFile: null,
                   footerCertificateUrl: '',
-                })
+                }))
               }}
               onFileChange={(file) => {
-                setForm({ ...form, footerCertificateFile: file })
+                setForm((current) => ({
+                  ...current,
+                  footerCertificateFile: file,
+                }))
               }}
-              onUrlChange={(url) => {
-                setForm({
-                  ...form,
+              onLibrarySelect={(asset) => {
+                setForm((current) => ({
+                  ...current,
+                  footerCertificateAlt: current.footerCertificateAlt || asset.alt,
                   footerCertificateFile: null,
-                  footerCertificateUrl: url,
-                })
+                  footerCertificateUrl: asset.publicUrl,
+                }))
               }}
             />
           </div>

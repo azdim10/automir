@@ -1,4 +1,4 @@
-import { type SyntheticEvent } from 'react'
+import { type Dispatch, type SetStateAction, type SyntheticEvent } from 'react'
 
 import type {
   AdminProductImageRecord,
@@ -39,6 +39,7 @@ export interface ProductFormState {
   imageAlt: string
   imageAssetId: string | null
   imageFile: File | null
+  imagePreviewUrl: string
   isActive: boolean
   isFeatured: boolean
   modifications: ProductModificationFormRow[]
@@ -94,7 +95,7 @@ interface ProductAdminFormProps {
   labels: ProductAdminLabels
   onDeleteImage?: (imageId: string) => void
   onSubmit: (event: SyntheticEvent<HTMLFormElement>) => void
-  setForm: (form: ProductFormState) => void
+  setForm: Dispatch<SetStateAction<ProductFormState>>
 }
 
 function createEmptySpecificationRow(): ProductSpecificationFormRow {
@@ -115,6 +116,7 @@ export function createEmptyProductForm(): ProductFormState {
     imageAlt: '',
     imageAssetId: null,
     imageFile: null,
+    imagePreviewUrl: '',
     isActive: true,
     isFeatured: false,
     modifications: [createEmptyModificationRow()],
@@ -146,6 +148,7 @@ export function createProductFormFromRecord(
     imageAlt: product.name,
     imageAssetId: null,
     imageFile: null,
+    imagePreviewUrl: '',
     isActive: product.is_active,
     isFeatured: product.is_featured,
     modifications:
@@ -495,33 +498,35 @@ export function ProductAdminForm({
               file={form.imageFile}
               folderPrefix="products"
               labels={defaultMediaImageFieldLabels}
-              url=""
+              url={form.imagePreviewUrl}
               onAltChange={(value) => {
-                setForm({ ...form, imageAlt: value })
-              }}
-              onAssetSelect={(asset) => {
-                setForm({
-                  ...form,
-                  imageAlt: form.imageAlt || asset.alt,
-                  imageAssetId: asset.id,
-                  imageFile: null,
-                })
+                setForm((current) => ({ ...current, imageAlt: value }))
               }}
               onClear={() => {
-                setForm({
-                  ...form,
+                setForm((current) => ({
+                  ...current,
                   imageAssetId: null,
                   imageFile: null,
-                })
+                  imagePreviewUrl: '',
+                }))
               }}
               onFileChange={(file) => {
-                setForm({
-                  ...form,
+                setForm((current) => ({
+                  ...current,
                   imageAssetId: null,
                   imageFile: file,
-                })
+                  imagePreviewUrl: '',
+                }))
               }}
-              onUrlChange={() => undefined}
+              onLibrarySelect={(asset) => {
+                setForm((current) => ({
+                  ...current,
+                  imageAlt: current.imageAlt || asset.alt,
+                  imageAssetId: asset.id,
+                  imageFile: null,
+                  imagePreviewUrl: asset.publicUrl,
+                }))
+              }}
             />
           </div>
           <div className="grid gap-3">
@@ -537,36 +542,29 @@ export function ProductAdminForm({
               labels={defaultMediaImageFieldLabels}
               url={form.sketchUrl}
               onAltChange={(value) => {
-                setForm({ ...form, sketchAlt: value })
-              }}
-              onAssetSelect={(asset) => {
-                setForm({
-                  ...form,
-                  sketchAlt: form.sketchAlt || asset.alt,
-                  sketchFile: null,
-                  sketchUrl: asset.publicUrl,
-                })
+                setForm((current) => ({ ...current, sketchAlt: value }))
               }}
               onClear={() => {
-                setForm({
-                  ...form,
+                setForm((current) => ({
+                  ...current,
                   sketchFile: null,
                   sketchUrl: '',
-                })
+                }))
               }}
               onFileChange={(file) => {
-                setForm({
-                  ...form,
+                setForm((current) => ({
+                  ...current,
                   sketchFile: file,
                   sketchUrl: '',
-                })
+                }))
               }}
-              onUrlChange={(url) => {
-                setForm({
-                  ...form,
+              onLibrarySelect={(asset) => {
+                setForm((current) => ({
+                  ...current,
+                  sketchAlt: current.sketchAlt || asset.alt,
                   sketchFile: null,
-                  sketchUrl: url,
-                })
+                  sketchUrl: asset.publicUrl,
+                }))
               }}
             />
           </div>

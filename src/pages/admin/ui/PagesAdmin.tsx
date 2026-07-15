@@ -445,24 +445,25 @@ function PagesAdminForm({
             labels={defaultMediaImageFieldLabels}
             url={form.imageUrl}
             onAltChange={(value) => {
-              setForm({ ...form, imageAlt: value })
+              setForm((current) => ({ ...current, imageAlt: value }))
             }}
             onClear={() => {
-              setForm({
-                ...form,
+              setForm((current) => ({
+                ...current,
                 imageFile: null,
                 imageUrl: '',
-              })
+              }))
             }}
             onFileChange={(file) => {
-              setForm({ ...form, imageFile: file })
+              setForm((current) => ({ ...current, imageFile: file }))
             }}
-            onUrlChange={(url) => {
-              setForm({
-                ...form,
+            onLibrarySelect={(asset) => {
+              setForm((current) => ({
+                ...current,
+                imageAlt: current.imageAlt || asset.alt,
                 imageFile: null,
-                imageUrl: url,
-              })
+                imageUrl: asset.publicUrl,
+              }))
             }}
           />
         </div>
