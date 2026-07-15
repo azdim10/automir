@@ -19,35 +19,74 @@ export const REQUEST_STATUS_OPTIONS = REQUEST_STATUSES.map((status) => ({
   value: status,
 }))
 
-const REQUEST_STATUS_SORT_ORDER: Record<RequestStatus, number> = {
-  cancelled: 3,
-  completed: 2,
-  new: 0,
-  processing: 1,
+export const REQUEST_STATUS_THEME: Record<
+  RequestStatus,
+  {
+    badgeClassName: string
+    cardClassName: string
+    columnClassName: string
+    dotClassName: string
+  }
+> = {
+  cancelled: {
+    badgeClassName: 'bg-slate-400 text-white',
+    cardClassName: 'border-slate-200 bg-slate-50/90 opacity-80',
+    columnClassName: 'border-slate-200 bg-slate-50/70',
+    dotClassName: 'bg-slate-400',
+  },
+  completed: {
+    badgeClassName: 'bg-emerald-600 text-white',
+    cardClassName:
+      'border-emerald-200 bg-gradient-to-br from-emerald-50/80 to-white shadow-sm ring-1 ring-emerald-100',
+    columnClassName: 'border-emerald-100 bg-emerald-50/40',
+    dotClassName: 'bg-emerald-500',
+  },
+  new: {
+    badgeClassName: 'bg-sky-600 text-white',
+    cardClassName:
+      'border-sky-200 bg-gradient-to-br from-sky-50/90 to-white shadow-sm ring-1 ring-sky-100',
+    columnClassName: 'border-sky-100 bg-sky-50/50',
+    dotClassName: 'bg-sky-500',
+  },
+  processing: {
+    badgeClassName: 'bg-amber-500 text-white',
+    cardClassName:
+      'border-amber-200 bg-gradient-to-br from-amber-50/80 to-white shadow-sm ring-1 ring-amber-100',
+    columnClassName: 'border-amber-100 bg-amber-50/40',
+    dotClassName: 'bg-amber-500',
+  },
 }
 
 export function isRequestStatus(value: string): value is RequestStatus {
   return REQUEST_STATUSES.includes(value as RequestStatus)
 }
 
-export function sortRequestsByStatus<T extends { created_at: string; status: string }>(
+export function normalizeRequestStatus(status: string): RequestStatus {
+  return isRequestStatus(status) ? status : 'new'
+}
+
+export function groupRequestsByStatus<T>(
   items: T[],
-): T[] {
-  return [...items].sort((left, right) => {
-    const leftStatus = isRequestStatus(left.status) ? left.status : 'new'
-    const rightStatus = isRequestStatus(right.status) ? right.status : 'new'
-    const statusDiff =
-      REQUEST_STATUS_SORT_ORDER[leftStatus] -
-      REQUEST_STATUS_SORT_ORDER[rightStatus]
+  getStatus: (item: T) => string,
+  getCreatedAt: (item: T) => string = () => '',
+): Record<RequestStatus, T[]> {
+  const grouped = Object.fromEntries(
+    REQUEST_STATUSES.map((status) => [status, [] as T[]]),
+  ) as Record<RequestStatus, T[]>
 
-    if (statusDiff !== 0) {
-      return statusDiff
-    }
+  for (const item of items) {
+    const status = normalizeRequestStatus(getStatus(item))
+    grouped[status].push(item)
+  }
 
-    return (
-      new Date(right.created_at).getTime() - new Date(left.created_at).getTime()
+  for (const status of REQUEST_STATUSES) {
+    grouped[status] = [...grouped[status]].sort(
+      (left, right) =>
+        new Date(getCreatedAt(right)).getTime() - new Date(getCreatedAt(left)).getTime(),
     )
-  })
+  }
+
+  return grouped
 }
 
 export function countNewRequests<T extends { status: string }>(items: T[]): number {
@@ -55,21 +94,13 @@ export function countNewRequests<T extends { status: string }>(items: T[]): numb
 }
 
 export function getRequestCardClassName(status: string): string {
-  if (status === 'cancelled') {
-    return 'border-slate-200 bg-slate-50/90 opacity-70'
-  }
+  return REQUEST_STATUS_THEME[normalizeRequestStatus(status)].cardClassName
+}
 
-  if (status === 'new') {
-    return 'border-sky-200 bg-gradient-to-r from-sky-50 via-white to-white shadow-sm ring-1 ring-sky-100'
-  }
-
-  return 'border-slate-200'
+export function getRequestStatusBadgeClassName(status: string): string {
+  return REQUEST_STATUS_THEME[normalizeRequestStatus(status)].badgeClassName
 }
 
 export function getRequestStatusLabel(status: string): string {
-  if (isRequestStatus(status)) {
-    return REQUEST_STATUS_LABELS[status]
-  }
-
-  return status
+  return REQUEST_STATUS_LABELS[normalizeRequestStatus(status)]
 }

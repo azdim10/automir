@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react'
+import { useMemo, useState, type ReactNode } from 'react'
 
 import type { AdminOrderRecord } from '@entities/admin'
 import type { TableRow } from '@shared/api/supabase'
@@ -16,9 +16,14 @@ import {
 import {
   countNewRequests,
   getRequestCardClassName,
+  getRequestStatusBadgeClassName,
   getRequestStatusLabel,
+  groupRequestsByStatus,
+  REQUEST_STATUS_LABELS,
   REQUEST_STATUS_OPTIONS,
-  sortRequestsByStatus,
+  REQUEST_STATUSES,
+  REQUEST_STATUS_THEME,
+  type RequestStatus,
 } from '../lib/requestStatus'
 
 function RequestCountBadge({ count }: { count: number }) {
@@ -30,6 +35,79 @@ function RequestCountBadge({ count }: { count: number }) {
     <span className="ml-1.5 inline-flex min-h-5 min-w-5 items-center justify-center rounded-full bg-red-600 px-1.5 text-[11px] font-semibold text-white">
       {count > 99 ? '99+' : count}
     </span>
+  )
+}
+
+function RequestStatusBadge({ status }: { status: string }) {
+  return (
+    <span
+      className={cn(
+        'rounded-full px-2 py-0.5 text-[11px] font-semibold tracking-wide',
+        getRequestStatusBadgeClassName(status),
+      )}
+    >
+      {getRequestStatusLabel(status)}
+    </span>
+  )
+}
+
+interface RequestKanbanColumnProps {
+  children: ReactNode
+  count: number
+  status: RequestStatus
+}
+
+function RequestKanbanColumn({ children, count, status }: RequestKanbanColumnProps) {
+  const theme = REQUEST_STATUS_THEME[status]
+
+  return (
+    <section
+      className={cn(
+        'flex min-h-[18rem] min-w-[15rem] flex-1 flex-col rounded-xl border p-3',
+        theme.columnClassName,
+      )}
+    >
+      <header className="mb-3 flex items-center justify-between gap-2">
+        <div className="flex items-center gap-2">
+          <span className={cn('size-2.5 rounded-full', theme.dotClassName)} />
+          <Typography as="h3" variant="body-sm" weight="semibold">
+            {REQUEST_STATUS_LABELS[status]}
+          </Typography>
+        </div>
+        <span
+          className={cn(
+            'inline-flex min-h-5 min-w-5 items-center justify-center rounded-full px-1.5 text-[11px] font-semibold',
+            theme.badgeClassName,
+          )}
+        >
+          {count}
+        </span>
+      </header>
+      <div className="grid flex-1 gap-2">{children}</div>
+    </section>
+  )
+}
+
+interface RequestKanbanBoardProps {
+  children: (status: RequestStatus) => ReactNode
+  getColumnCount: (status: RequestStatus) => number
+}
+
+function RequestKanbanBoard({ children, getColumnCount }: RequestKanbanBoardProps) {
+  return (
+    <div className="overflow-x-auto pb-1">
+      <div className="flex min-w-full gap-4">
+        {REQUEST_STATUSES.map((status) => (
+          <RequestKanbanColumn
+            count={getColumnCount(status)}
+            key={status}
+            status={status}
+          >
+            {children(status)}
+          </RequestKanbanColumn>
+        ))}
+      </div>
+    </div>
   )
 }
 
@@ -58,7 +136,10 @@ export function RequestsAdmin({
   onOrderStatusChange,
   onSectionChange,
 }: RequestsAdminProps) {
-  const newOrdersCount = useMemo(() => countNewRequests(orders.map((r) => r.order)), [orders])
+  const newOrdersCount = useMemo(
+    () => countNewRequests(orders.map((record) => record.order)),
+    [orders],
+  )
   const newCallbacksCount = useMemo(() => countNewRequests(callbacks), [callbacks])
 
   return (
@@ -118,73 +199,67 @@ interface OrdersAdminProps {
 
 function OrdersAdmin({ labels, locale, orders, onStatusChange }: OrdersAdminProps) {
   const [selectedOrder, setSelectedOrder] = useState<AdminOrderRecord | null>(null)
-  const sortedOrders = useMemo(
-    () => sortRequestsByStatus(orders.map((record) => record.order)).map((order) => {
-      return orders.find((record) => record.order.id === order.id) ?? {
-        items: [],
-        order,
-      }
-    }),
+  const groupedOrders = useMemo(
+    () =>
+      groupRequestsByStatus(
+        orders,
+        (record) => record.order.status,
+        (record) => record.order.created_at,
+      ),
     [orders],
   )
 
   return (
     <>
-      <div className="grid gap-3">
-        {sortedOrders.map((record) => (
-          <Card
-            className={cn('transition-colors', getRequestCardClassName(record.order.status))}
-            key={record.order.id}
-          >
-            <CardContent className="grid gap-3 md:grid-cols-[minmax(0,1fr)_14rem]">
-              <button
-                className="grid gap-1 text-left"
-                type="button"
-                onClick={() => {
-                  setSelectedOrder(record)
-                }}
-              >
-                <div className="flex flex-wrap items-center gap-2">
-                  <Typography as="h3" variant="h3" weight="semibold">
-                    {record.order.customer_name}
+      <RequestKanbanBoard
+        getColumnCount={(status) => groupedOrders[status].length}
+      >
+        {(status) =>
+          groupedOrders[status].map((record) => (
+            <Card
+              className={cn('transition-colors', getRequestCardClassName(record.order.status))}
+              key={record.order.id}
+            >
+              <CardContent className="grid gap-3 p-3">
+                <button
+                  className="grid gap-1 text-left"
+                  type="button"
+                  onClick={() => {
+                    setSelectedOrder(record)
+                  }}
+                >
+                  <div className="flex flex-wrap items-center gap-2">
+                    <Typography as="h3" variant="body" weight="semibold">
+                      {record.order.customer_name}
+                    </Typography>
+                    <RequestStatusBadge status={record.order.status} />
+                  </div>
+                  <Typography className="text-slate-500" variant="body-sm">
+                    {record.order.customer_phone}
                   </Typography>
-                  {record.order.status === 'new' ? (
-                    <span className="rounded-full bg-sky-600 px-2 py-0.5 text-[11px] font-semibold uppercase tracking-wide text-white">
-                      {getRequestStatusLabel(record.order.status)}
-                    </span>
-                  ) : null}
-                </div>
-                <Typography className="text-slate-500" variant="body-sm">
-                  {record.order.customer_phone}
-                  {record.order.customer_email
-                    ? ` · ${record.order.customer_email}`
-                    : null}
-                </Typography>
-                <Typography variant="body-sm" weight="semibold">
-                  {formatCurrency(record.order.total_amount, locale)}
-                </Typography>
-                <Typography className="text-slate-400" variant="caption">
-                  {new Date(record.order.created_at).toLocaleString(locale)}
-                </Typography>
-              </button>
-              <div
-                onClick={(event) => {
-                  event.stopPropagation()
-                }}
-              >
+                  <Typography variant="body-sm" weight="semibold">
+                    {formatCurrency(record.order.total_amount, locale)}
+                  </Typography>
+                  <Typography className="text-slate-400" variant="caption">
+                    {new Date(record.order.created_at).toLocaleString(locale)}
+                  </Typography>
+                </button>
                 <Select
                   aria-label={labels.status}
                   value={record.order.status}
                   options={REQUEST_STATUS_OPTIONS}
+                  onClick={(event) => {
+                    event.stopPropagation()
+                  }}
                   onChange={(event) => {
                     onStatusChange(record.order.id, event.target.value)
                   }}
                 />
-              </div>
-            </CardContent>
-          </Card>
-        ))}
-      </div>
+              </CardContent>
+            </Card>
+          ))
+        }
+      </RequestKanbanBoard>
       <OrderDetailsModal
         isOpen={selectedOrder !== null}
         locale={locale}
@@ -222,14 +297,15 @@ function OrderDetailsModal({
   return (
     <Modal isOpen={isOpen} size="lg" title="Заказ" onClose={onClose}>
       <div className="grid gap-4">
-        <div className="grid gap-1">
+        <div className="flex flex-wrap items-center gap-2">
+          <RequestStatusBadge status={order.status} />
           <Typography className="text-slate-500" variant="caption">
             № {order.id}
           </Typography>
-          <Typography variant="body-sm">
-            {new Date(order.created_at).toLocaleString(locale)}
-          </Typography>
         </div>
+        <Typography variant="body-sm">
+          {new Date(order.created_at).toLocaleString(locale)}
+        </Typography>
         <div className="grid gap-2 rounded-lg border border-slate-200 p-3">
           <Typography as="h3" variant="body" weight="semibold">
             Клиент
@@ -318,62 +394,64 @@ function CallbacksAdmin({
 }: CallbacksAdminProps) {
   const [selectedCallback, setSelectedCallback] =
     useState<TableRow<'callback_requests'> | null>(null)
-  const sortedCallbacks = useMemo(
-    () => sortRequestsByStatus(callbacks),
+  const groupedCallbacks = useMemo(
+    () =>
+      groupRequestsByStatus(
+        callbacks,
+        (callback) => callback.status,
+        (callback) => callback.created_at,
+      ),
     [callbacks],
   )
 
   return (
     <>
-      <div className="grid gap-3">
-        {sortedCallbacks.map((callback) => (
-          <Card
-            className={cn('transition-colors', getRequestCardClassName(callback.status))}
-            key={callback.id}
-          >
-            <CardContent className="grid gap-3 md:grid-cols-[minmax(0,1fr)_14rem]">
-              <button
-                className="grid gap-1 text-left"
-                type="button"
-                onClick={() => {
-                  setSelectedCallback(callback)
-                }}
-              >
-                <div className="flex flex-wrap items-center gap-2">
-                  <Typography as="h3" variant="h3" weight="semibold">
-                    {callback.customer_name}
+      <RequestKanbanBoard
+        getColumnCount={(status) => groupedCallbacks[status].length}
+      >
+        {(status) =>
+          groupedCallbacks[status].map((callback) => (
+            <Card
+              className={cn('transition-colors', getRequestCardClassName(callback.status))}
+              key={callback.id}
+            >
+              <CardContent className="grid gap-3 p-3">
+                <button
+                  className="grid gap-1 text-left"
+                  type="button"
+                  onClick={() => {
+                    setSelectedCallback(callback)
+                  }}
+                >
+                  <div className="flex flex-wrap items-center gap-2">
+                    <Typography as="h3" variant="body" weight="semibold">
+                      {callback.customer_name}
+                    </Typography>
+                    <RequestStatusBadge status={callback.status} />
+                  </div>
+                  <Typography className="text-slate-500" variant="body-sm">
+                    {callback.customer_phone}
                   </Typography>
-                  {callback.status === 'new' ? (
-                    <span className="rounded-full bg-sky-600 px-2 py-0.5 text-[11px] font-semibold uppercase tracking-wide text-white">
-                      {getRequestStatusLabel(callback.status)}
-                    </span>
-                  ) : null}
-                </div>
-                <Typography className="text-slate-500" variant="body-sm">
-                  {callback.customer_phone}
-                </Typography>
-                <Typography className="text-slate-400" variant="caption">
-                  {new Date(callback.created_at).toLocaleString(locale)}
-                </Typography>
-              </button>
-              <div
-                onClick={(event) => {
-                  event.stopPropagation()
-                }}
-              >
+                  <Typography className="text-slate-400" variant="caption">
+                    {new Date(callback.created_at).toLocaleString(locale)}
+                  </Typography>
+                </button>
                 <Select
                   aria-label={labels.status}
                   value={callback.status}
                   options={REQUEST_STATUS_OPTIONS}
+                  onClick={(event) => {
+                    event.stopPropagation()
+                  }}
                   onChange={(event) => {
                     onStatusChange(callback.id, event.target.value)
                   }}
                 />
-              </div>
-            </CardContent>
-          </Card>
-        ))}
-      </div>
+              </CardContent>
+            </Card>
+          ))
+        }
+      </RequestKanbanBoard>
       <CallbackDetailsModal
         callback={selectedCallback}
         isOpen={selectedCallback !== null}
@@ -409,14 +487,15 @@ function CallbackDetailsModal({
   return (
     <Modal isOpen={isOpen} size="md" title="Заявка на звонок" onClose={onClose}>
       <div className="grid gap-4">
-        <div className="grid gap-1">
+        <div className="flex flex-wrap items-center gap-2">
+          <RequestStatusBadge status={callback.status} />
           <Typography className="text-slate-500" variant="caption">
             № {callback.id}
           </Typography>
-          <Typography variant="body-sm">
-            {new Date(callback.created_at).toLocaleString(locale)}
-          </Typography>
         </div>
+        <Typography variant="body-sm">
+          {new Date(callback.created_at).toLocaleString(locale)}
+        </Typography>
         <div className="grid gap-2 rounded-lg border border-slate-200 p-3">
           <Typography variant="body-sm" weight="semibold">
             {callback.customer_name}
